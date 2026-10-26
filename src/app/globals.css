@@ -850,6 +850,7 @@
   .hero-figure,
   .hero-meta,
   .hero-flash,
+  .hero-gl,
   .hero-block:not(:first-child),
   .hero-arrow {
     display: none;
@@ -897,6 +898,12 @@
       height: 100svh;
       overflow: hidden;
       padding: 0;
+    }
+    /* one section per gesture (HeroStory): no native panning inside the hero on touch — a swipe is one step
+       (pinch-zoom stays; "none" first for browsers without the pinch-zoom value) */
+    .hero-track[data-steps="on"] .hero-stage {
+      touch-action: none;
+      touch-action: pinch-zoom;
     }
     /* the figure's anchor: only its size matters (the drone camera frames it) */
     .hero-figure {
@@ -946,6 +953,7 @@
       color: rgb(255 255 255 / 0.82);
       pointer-events: none;
       opacity: calc(1 - var(--h) * 1.3);
+      will-change: opacity; /* faded every scroll frame: keep it on the compositor */
     }
     .hero-hint {
       opacity: clamp(0, calc(1 - var(--h) * 14), 1);
@@ -964,6 +972,20 @@
         rgb(255 255 255 / 0.95) calc(var(--hole) * 0.92),
         rgb(255 255 255 / 0) calc(var(--hole) * 1.35)
       );
+    }
+    /* the GPU copy (lib/gl/heroCopy): plays the block transitions and draws the halo, so the DOM halo stands down */
+    .hero-gl {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      visibility: hidden; /* shown only while it draws */
+    }
+    .hero-stage[data-gl="on"] .hero-flash {
+      display: none;
     }
     html[data-studio="off"] .hero-blocks,
     html[data-studio="off"] .hero-meta,
@@ -1104,6 +1126,7 @@
   }
   .wwd-row {
     height: var(--row);
+    will-change: opacity; /* its fade is scrolled every frame: keep it on the compositor */
   }
   .wwd-link {
     display: grid;
@@ -1399,19 +1422,20 @@
   inherits: true;
   initial-value: 0%;
 }
+/* one gradient = the paper (#f6f3fe) masked open (transparent at --pr → opaque 9% further) with a white glow at the
+   rim (0.95 at --pr fading out over 10%), pre-multiplied into stops: a single paint per frame, no mask layer */
 .preloader-bg {
   position: absolute;
   inset: 0;
-  background: var(--color-bg);
-  -webkit-mask: radial-gradient(circle at 50% 42%, transparent var(--pr), #000 calc(var(--pr) + 9%));
-  mask: radial-gradient(circle at 50% 42%, transparent var(--pr), #000 calc(var(--pr) + 9%));
+  background: radial-gradient(
+    circle at 50% 42%,
+    rgb(252 251 255 / 0) var(--pr),
+    rgb(252 251 255 / 0.333) calc(var(--pr) + 3%),
+    rgb(249 248 254 / 0.667) calc(var(--pr) + 6%),
+    rgb(247 244 254) calc(var(--pr) + 9%),
+    var(--color-bg) calc(var(--pr) + 10%)
+  );
   animation: pl-open 1150ms cubic-bezier(0.65, 0, 0.35, 1) 1500ms both;
-}
-.preloader-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 42%, rgb(255 255 255 / 0) calc(var(--pr) - 4%), rgb(255 255 255 / 0.95) var(--pr), rgb(255 255 255 / 0) calc(var(--pr) + 10%));
 }
 .preloader-row {
   position: relative;

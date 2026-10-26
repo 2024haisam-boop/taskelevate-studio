@@ -30,7 +30,17 @@ export function WhatWeDo() {
     const motion = window.matchMedia("(prefers-reduced-motion: no-preference)");
     const words = Array.from(para.querySelectorAll<HTMLElement>("[data-w]"));
     const rows = Array.from(list.children) as HTMLElement[];
+    // last written values: only what changes is written (the words are text — each write repaints it)
+    const wordOp = words.map(() => "");
+    const rowOp = rows.map(() => "");
+    const rowOn = rows.map(() => "");
     let raf = 0;
+    let near = false; // only does any work while the section is around the viewport
+    let rowH = 40, trackH = 1;
+    const measure = () => {
+      rowH = rows[0]?.offsetHeight ?? 40;
+      trackH = track.offsetHeight;
+    };
 
     const update = () => {
       raf = 0;
@@ -39,33 +49,53 @@ export function WhatWeDo() {
         return;
       }
       const vh = window.innerHeight;
-      const r = track.getBoundingClientRect();
-      const p = clamp01(-r.top / Math.max(1, r.height - vh));
+      const top = track.getBoundingClientRect().top;
+      const p = clamp01(-top / Math.max(1, trackH - vh));
       // the statement starts filling as it rises into view and finishes early in the pin
-      const lead = clamp01((vh * 0.85 - r.top) / (vh * 0.85));
+      const lead = clamp01((vh * 0.85 - top) / (vh * 0.85));
       const fill = clamp01(lead * 0.45 + clamp01(p / FILL_END) * 0.55);
       const n = words.length;
-      words.forEach((w, i) => (w.style.opacity = (0.16 + 0.84 * clamp01((fill * (n + 4) - i) / 4)).toFixed(3)));
+      words.forEach((w, i) => {
+        const v = (0.16 + 0.84 * clamp01((fill * (n + 4) - i) / 4)).toFixed(2);
+        if (v !== wordOp[i]) w.style.opacity = wordOp[i] = v;
+      });
 
       // the wheel
       const t = clamp01((p - FILL_END) / (1 - FILL_END)) * (rows.length - 1);
-      const h = rows[0]?.offsetHeight ?? 40;
-      list.style.transform = `translate3d(0, ${(-t * h).toFixed(1)}px, 0)`;
+      list.style.transform = `translate3d(0, ${(-t * rowH).toFixed(1)}px, 0)`;
       rows.forEach((row, i) => {
         const d = i - t;
         const a = d < 0 ? 1 - Math.min(1, -d / 2.2) : 1 - Math.min(1, d / 5.5);
-        row.style.opacity = Math.max(0.04, a).toFixed(3);
-        row.dataset.active = Math.abs(d) < 0.5 ? "true" : "false";
+        const v = Math.max(0.04, a).toFixed(3), on = Math.abs(d) < 0.5 ? "true" : "false";
+        if (v !== rowOp[i]) row.style.opacity = rowOp[i] = v;
+        if (on !== rowOn[i]) row.dataset.active = rowOn[i] = on;
       });
     };
     const kick = () => {
-      if (!raf) raf = requestAnimationFrame(update);
+      if (near && !raf) raf = requestAnimationFrame(update);
     };
+    const io = new IntersectionObserver(
+      ([e]) => {
+        near = Boolean(e?.isIntersecting);
+        // settle once on the way out, then rest
+        if (!raf) raf = requestAnimationFrame(update);
+      },
+      { rootMargin: "100% 0px 100% 0px" },
+    );
+    const ro = new ResizeObserver(() => {
+      measure();
+      kick();
+    });
+    measure();
     update();
+    io.observe(track);
+    ro.observe(track);
     window.addEventListener("scroll", kick, { passive: true });
     window.addEventListener("resize", kick);
     motion.addEventListener("change", kick);
     return () => {
+      io.disconnect();
+      ro.disconnect();
       window.removeEventListener("scroll", kick);
       window.removeEventListener("resize", kick);
       motion.removeEventListener("change", kick);

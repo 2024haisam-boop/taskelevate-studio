@@ -66,6 +66,12 @@
   everything, scroll-jacking. (Full list: `docs/BRIEF.md` §03.)
 - Respect `prefers-reduced-motion` in every animation.
 - Mobile is as important as desktop. Test at 320px wide minimum. No horizontal scroll.
+- **Smooth on iPhone (Safari renders filters and text shadows on the CPU):** per scroll frame, write only
+  `transform` / `opacity` (or WebGL uniforms); never animate SVG `filter: url()`, `text-shadow`, `blur()` or
+  gradients on large elements — the hero copy warps on the GPU (`lib/gl/heroCopy.ts`) for this reason. No
+  non-passive `touchmove`/`wheel` listeners except for the moment they must block (HeroStory's glide). Scroll
+  handlers do nothing while their section is off screen (IntersectionObserver), read layout first, write after,
+  and skip writes that don't change. Chrome headless can't show Safari's cost — reason about it, then verify.
 
 ## 4. Code conventions
 

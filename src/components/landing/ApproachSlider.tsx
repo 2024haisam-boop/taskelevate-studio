@@ -35,33 +35,48 @@ export function ApproachSlider() {
     const stage = stageRef.current;
     if (!track || !stage) return;
     let raf = 0;
-    let stickyTop = 0;
+    let stickyTop = 0, trackH = 1, stageH = 1, lastP = "";
+    let near = false; // only does any work while the section is around the viewport
 
     const measure = () => {
       stickyTop = parseFloat(getComputedStyle(stage).top) || 0;
+      trackH = track.offsetHeight;
+      stageH = stage.offsetHeight;
     };
     const update = () => {
       raf = 0;
-      const r = track.getBoundingClientRect();
-      const total = Math.max(1, r.height - stage.offsetHeight);
-      const p = Math.min(1, Math.max(0, (stickyTop - r.top) / total));
+      const top = track.getBoundingClientRect().top;
+      const p = Math.min(1, Math.max(0, (stickyTop - top) / Math.max(1, trackH - stageH)));
       progress.current = p;
-      track.style.setProperty("--ap", p.toFixed(4));
+      const v = p.toFixed(4);
+      if (v !== lastP) track.style.setProperty("--ap", (lastP = v));
       setI(Math.min(STEPS.length - 1, Math.floor(p * STEPS.length)));
     };
     const kick = () => {
-      if (!raf) raf = requestAnimationFrame(update);
+      if (near && !raf) raf = requestAnimationFrame(update);
     };
     const resize = () => {
       measure();
       kick();
     };
+    const io = new IntersectionObserver(
+      ([e]) => {
+        near = Boolean(e?.isIntersecting);
+        if (!raf) raf = requestAnimationFrame(update);
+      },
+      { rootMargin: "50% 0px 50% 0px" },
+    );
+    const ro = new ResizeObserver(resize);
 
     measure();
     update();
+    io.observe(track);
+    ro.observe(track);
     window.addEventListener("scroll", kick, { passive: true });
     window.addEventListener("resize", resize);
     return () => {
+      io.disconnect();
+      ro.disconnect();
       window.removeEventListener("scroll", kick);
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(raf);

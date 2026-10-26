@@ -5,7 +5,9 @@
 const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*+=/<>";
 const glyph = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]!;
 
-export function decodeTo(el: HTMLElement, text: string, duration = 700): () => void {
+/** Lay `text` out as per-letter spans (resolved). Kept on the element, so a later decode of the same text reuses it
+ *  and the letters never move (the hero's GPU copy relies on that). */
+function build(el: HTMLElement, text: string): HTMLSpanElement[] {
   el.textContent = "";
   const chars: HTMLSpanElement[] = [];
   const words = text.split(" ");
@@ -14,14 +16,28 @@ export function decodeTo(el: HTMLElement, text: string, duration = 700): () => v
     word.className = "dc-word";
     for (const ch of w) {
       const c = document.createElement("span");
-      c.className = "dc dc-s";
+      c.className = "dc";
       c.textContent = ch;
-      c.dataset.g = glyph();
       word.appendChild(c);
       chars.push(c);
     }
     el.appendChild(word);
     if (wi < words.length - 1) el.appendChild(document.createTextNode(" "));
+  });
+  el.dataset.dc = text;
+  return chars;
+}
+
+/** Prepare an element for decoding without playing anything (same text, same layout). */
+export function prepareDecode(el: HTMLElement, text: string) {
+  if (el.dataset.dc !== text) build(el, text);
+}
+
+export function decodeTo(el: HTMLElement, text: string, duration = 700): () => void {
+  const chars = el.dataset.dc === text ? Array.from(el.querySelectorAll<HTMLSpanElement>(".dc")) : build(el, text);
+  chars.forEach((c) => {
+    c.classList.add("dc-s");
+    c.dataset.g = glyph();
   });
 
   const start = performance.now();

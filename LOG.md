@@ -430,3 +430,60 @@ pushed. Kept out of the repo (`.gitignore`): `/assets-src/` (the parent site's b
 `docs/DEPLOYMENT.md` now points at the repo (Root Directory stays empty in Vercel).
 **Next:** user imports the repo in Vercel; set env vars from `.env.example` (form needs the three Resend keys); add the
 `studio` CNAME. Then real portfolio assets → `scripts/encode-work.sh`, check each for third-party branding.
+
+## [2026-10-26] — Claude (Opus 5.5) — iPhone smoothness pass (same site, same animations) — DONE
+**User request:** "very slow on my iPhone 17 Pro Max … hero lags … don't remove anything … optimise through code,
+super smooth".
+**Found (Safari/WebKit specifics; Chrome headless holds 60 fps at 4× throttle so it can't show them):**
+1. HeroStory kept a non-passive `touchmove`/`wheel` listener on window permanently → every touch scroll waited on JS.
+2. Hero copy transitions = SVG `feTurbulence`+`feDisplacementMap` + `blur()` + animated `text-shadow` on big type,
+   re-rendered on the CPU every frame (Safari has no GPU path for these).
+3. The ring halo = a full-screen radial gradient repainted every frame of the fly-through.
+4. WhatWeDo (56 elements) and ApproachSlider ran their scroll work on every frame site-wide, even off screen, with
+   layout reads after writes.
+5. Shape building + hero snapshots competed with the intro's main-thread curtain animation; intro curtain painted two
+   full-screen gradients + a mask per frame.
+**What I did:**
+- `lib/gl/heroCopy.ts` (new): each copy block is rasterised once (every word at its laid-out position, decode letters
+  individually, soft shadow at half res, pill as an SDF) → the warp runs in a shader: displacement (own 2-octave
+  gradient noise, same params as the SVG filter) → offscreen target → 16-tap mipmapped gaussian (displace → blur, as
+  the filter chain) with the colour split in between, CSS paint order. Also draws the halo. The DOM copy shows at rest
+  (crisp, real text); the texture only plays transitions; the SVG filter path stays as the fallback. Snapshots are
+  relative to `.hero-blocks` (the intro slide-in can't bake in), prefetched between frames, never during the intro.
+  Canvas hidden when idle. Verified side by side vs the previous build: rest, mid-warp, decode, glide, desktop L/R.
+- `decode.ts`: `prepareDecode` builds the letter spans once; `decodeTo` reuses them (letters never move).
+- HeroStory: blocking listeners only during the glide; one layout read per frame (track top), anchor/track/stage
+  sizes cached on resize; `set()` skips unchanged writes; `--h`/`--hole` set on the elements that use them.
+- WhatWeDo / ApproachSlider: IntersectionObserver-gated, cached sizes, unchanged writes skipped; `.wwd-row`
+  `will-change: opacity`, `.hero-meta` `will-change: opacity`.
+- StudioCanvas: shape builds wait for the intro; adaptive resolution now tracks the display's refresh (60/120/144 Hz),
+  steps back up after sustained headroom (with a ceiling so it can't oscillate), ignores the intro.
+- Preloader: mask + `::after` ring merged into one pre-multiplied radial gradient (same look, one paint, no mask).
+- AGENT_INSTRUCTIONS §3: the smoothness rules above.
+**Measured (Chrome, iPhone 440×956@3x, CPU 6×, prod, previous commit vs now):** glide 57→60 fps, dropped frames
+7→0 (worst 50→17 ms), style 210→37 ms, layout 69→30; hero scroll script 279→105 ms, style 121→48, prepaint 193→57;
+page scroll 3→0 dropped, style 217→44, layerize 219→96. Intro: the old build's curtain circle stalled behind JS
+(stayed a dot while the logo rose); now it opens in step. Fly-through test (wheel, desktop + phone) unchanged;
+qa-matrix all clear; reduced-motion / no-WebGL fallbacks render; `npm run check` ✓.
+**Note:** iPhone ProMotion is 120 Hz (not 144); iOS Safari runs page animation frames at 60 fps by default (Apple's
+setting) while native scrolling is 120 Hz.
+
+## [2026-10-26] — Claude (Opus 5.5) — hero: one section per gesture — DONE
+**User request:** "the hero must be scrolled one section at a time no matter how hard we scroll".
+**What I did (`HeroStory.tsx`):** each phase has a resting place (top of page; the middle of each hold; the ring at
+ZOOM_FROM − 0.015). A gesture glides to the next one (1.25 s, longer for longer stretches) and the rest of that
+gesture is spent:
+- wheel / trackpad: events are one gesture until a 220 ms pause (timed by `e.timeStamp`, so a busy frame can't split
+  one); momentum tails are swallowed, also past the fly-through landing. The blocking wheel listener is attached only
+  while the hero (or a glide) is on screen.
+- touch: native panning is off inside the hero only (`.hero-track[data-steps="on"] .hero-stage { touch-action:
+  pinch-zoom }`); a swipe ≥ 24 px that starts on the stage is one step (passive listeners — nothing waits on JS).
+- keys: ↓ / ↑ / PageDown / PageUp / Space (Shift = up), no auto-repeat; not in fields or on buttons.
+- past the ring the next gesture is the fly-through (as before); scrolling up from What-we-do returns to the ring.
+- anything else that leaves the page between sections (scrollbar, find-in-page, restored scroll) settles on the
+  nearest one after 200 ms.
+- `stepCurve(a, b)`: monotone cubic timing so each step's warp plays from ~0.2 s to ~0.85 s, smooth start and finish.
+**Verified (headless, desktop wheel with 1.1 s and 2.7 s momentum flicks + phone swipes):** every hard flick / swipe =
+exactly one section (01→02→03→04, back to 03, key → 04), three violent swipes in a row = one section, ring → fly-through
+lands on What-we-do with no overshoot, swipe back returns to the ring; repeated runs stable. In-page timing: warp
+217→867 ms, settled 1366 ms (step 1); 183→750 / 1183 ms (step 2).

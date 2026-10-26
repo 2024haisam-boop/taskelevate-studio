@@ -270,7 +270,13 @@ export function StudioCanvas() {
     figure.ensure("sphere");
     figure.prebuild(SHAPES);
     let disposed = false;
-    const idle = (fn: () => void) => (typeof window.requestIdleCallback === "function" ? window.requestIdleCallback(fn, { timeout: 1200 }) : setTimeout(fn, 150));
+    // shapes are built in spare moments — never during the intro (its curtain animates on the main thread in Safari)
+    const idle = (fn: () => void): unknown =>
+      html.classList.contains("preloading")
+        ? window.setTimeout(() => idle(fn), 300)
+        : typeof window.requestIdleCallback === "function"
+          ? window.requestIdleCallback(fn, { timeout: 1200 })
+          : window.setTimeout(fn, 150);
     const build = () => !disposed && figure.buildNext() && idle(build);
     idle(build);
 
@@ -299,7 +305,9 @@ export function StudioCanvas() {
     let yaw = 0, clock = 0, last = performance.now(), raf = 0, running = false, quietFor = 0, inkHue = 0;
     let introDone = !html.classList.contains("preloading");
     let burstAt = performance.now() + 2600, burstStart = -1e9;
-    let frameAvg = 1 / 60, slowFor = 0, hadCam = false;
+    // adaptive resolution: `refresh` tracks the display's frame interval (60/120/144 Hz), `fastFor`/`slowFor` how long
+    // frames have kept up with it; `ceiling` stops it climbing back to a level it could not hold
+    let frameAvg = 1 / 60, slowFor = 0, fastFor = 0, refresh = 1 / 60, ceiling = 1, raisedAt = -1e9, settleAt = 0, hadCam = false;
     const STEP = 1 / 60;
     let acc = 0;
 
@@ -428,14 +436,28 @@ export function StudioCanvas() {
         introDone = true;
         figure.changedAt = now;
         burstAt = now + 2600;
+        settleAt = now + 1500;
       }
-      // adaptive resolution: if frames stay slow for a couple of seconds, render fewer pixels
+      // adaptive resolution: frames that keep missing the display's refresh → render fewer pixels; long headroom →
+      // a step back up (once per level). Not judged during the intro or right after it (loading work).
+      if (dt > 0.0055) refresh = Math.min(1 / 30, Math.max(1 / 144, refresh + (dt - refresh) * (dt < refresh ? 0.5 : 0.002)));
       frameAvg += (dt - frameAvg) * 0.05;
-      slowFor = frameAvg > 1 / 42 ? slowFor + dt : 0;
-      if (slowFor > 2 && quality > 0.55) {
-        quality *= 0.8;
-        slowFor = 0;
-        resize();
+      if (introDone && now > settleAt) {
+        slowFor = frameAvg > Math.max(refresh * 1.22, 1 / 75) ? slowFor + dt : 0;
+        fastFor = frameAvg < refresh * 1.06 ? fastFor + dt : 0;
+        if (slowFor > 1.5 && quality > 0.55) {
+          if (now - raisedAt < 5000) ceiling = quality * 0.999;
+          quality *= 0.85;
+          slowFor = fastFor = 0;
+          settleAt = now + 600;
+          resize();
+        } else if (fastFor > 6 && quality < ceiling - 0.01) {
+          quality = Math.min(ceiling, quality / 0.85);
+          fastFor = 0;
+          raisedAt = now;
+          settleAt = now + 600;
+          resize();
+        }
       }
 
       // pointer → velocity + ink
