@@ -5,17 +5,15 @@ The parent site **taskelevate.com must remain untouched.** You only add the reco
 
 ## 1. Push the code
 
-The project root is `~/Developer/taskelevate-studio`. Put it in its own Git repository
-(GitHub/GitLab/Bitbucket), or deploy with the Vercel CLI from inside this folder:
+The project root is `~/Developer/taskelevate-studio`, pushed to GitHub as
+`github.com/2024haisam-boop/taskelevate-studio` (branch `main`, repo root = project root, so Vercel's **Root
+Directory** stays empty). Import that repository in Vercel → Add New → Project, or deploy with the Vercel CLI:
 
 ```bash
 npm i -g vercel
 vercel          # first run links/creates the project (framework is auto-detected as Next.js)
 vercel --prod
 ```
-
-If you import a repository where this folder is a sub-directory, set **Root Directory** to `taskelevate studio`
-in Vercel → Project → Settings → General.
 
 Build settings (defaults are correct): Install `npm install` · Build `npm run build` · Output: Next.js default ·
 Node.js 20.x or newer.

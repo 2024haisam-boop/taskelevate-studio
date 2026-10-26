@@ -420,3 +420,13 @@ top; scrolling up into that stretch glides back out to the ring (1.3 s). Wheel/t
 plays. Footer link columns: 2-up between lg and xl (the 4-up grid overflowed by 19px at 1024px).
 **Verified:** headless wheel test desktop + phone (forward lands at wwd top 0, reverse returns to p≈0.725);
 qa-matrix all clear; tsc ✓ eslint ✓ build ✓.
+
+## [2026-10-26] — Claude (Opus 5.5) — pushed to GitHub — DONE
+**User request:** move toward finalization — push to GitHub (`2024haisam-boop/taskelevate-studio`), then host on Vercel;
+real portfolio assets still to come.
+**What I did:** `git init` on `main`, one initial commit, remote `origin` → https://github.com/2024haisam-boop/taskelevate-studio.git,
+pushed. Kept out of the repo (`.gitignore`): `/assets-src/` (the parent site's brand screenshots — ownership unconfirmed) and
+`docs/previews/v4-vs-afternow.jpg` (contains afternow.co's site). No `.env*` secrets exist/are committed (only `.env.example`).
+`docs/DEPLOYMENT.md` now points at the repo (Root Directory stays empty in Vercel).
+**Next:** user imports the repo in Vercel; set env vars from `.env.example` (form needs the three Resend keys); add the
+`studio` CNAME. Then real portfolio assets → `scripts/encode-work.sh`, check each for third-party branding.
