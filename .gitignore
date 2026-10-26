@@ -1,0 +1,23 @@
+# deps
+/node_modules
+
+# next
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# misc
+.DS_Store
+*.log
+.vercel
+
+# third-party / unconfirmed material — kept locally, never published
+/assets-src/
+/docs/previews/v4-vs-afternow.jpg

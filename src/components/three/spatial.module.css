@@ -1,0 +1,329 @@
+/* =========================================================================
+   SPATIAL EXPERIENCE — flat UI → spatial composition (CSS 3D + GSAP scrub)
+   GSAP owns: .root (rotation/scale) and .layerOuter (z, opacity)
+   CSS vars own: .tilt (--tx/--ty pointer tilt) and .layerInner (--explore depth)
+   → no element is animated by two systems.
+   ========================================================================= */
+
+.stageBox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  container-type: inline-size;
+  perspective: 220cqw;
+  perspective-origin: 50% 35%;
+}
+
+.tilt {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--ty, 0deg)) rotateY(var(--tx, 0deg));
+  transition: transform 600ms var(--ease-out-quart);
+}
+
+.root {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: 50% 55%;
+  --accent: #a855f7;
+  --accent-2: #8755e8;
+}
+
+.root[data-accent="blue"] {
+  --accent: #189be8;
+  --accent-2: #1477b5;
+}
+
+.root[data-accent="white"] {
+  --accent: #e9ebf2;
+  --accent-2: #afb3c1;
+}
+
+.layerOuter {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: opacity 400ms ease;
+}
+
+.layerOuter[data-dim="true"] {
+  opacity: 0.16;
+}
+
+.layerInner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--explore, 0) * var(--li) * 4.2cqw));
+  transition: transform 500ms var(--ease-out-expo);
+}
+
+/* ---- Layer 0: base canvas ---- */
+.base {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.6cqw;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px) 0 0 / 100% 3.2cqw,
+    linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px) 0 0 / 3.2cqw 100%,
+    #0e1017;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  box-shadow: 0 5cqw 10cqw -3cqw rgb(0 0 0 / 0.85);
+}
+
+/* ---- Layer 1: layout structure ---- */
+.block {
+  position: absolute;
+  border-radius: 1cqw;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.025);
+}
+
+.navBlock {
+  left: 3%;
+  right: 3%;
+  top: 4%;
+  height: 9%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 2cqw;
+}
+
+.mediaBlock {
+  left: 3%;
+  top: 17%;
+  width: 52%;
+  height: 79%;
+}
+
+.infoBlock {
+  left: 58%;
+  top: 17%;
+  width: 39%;
+  height: 79%;
+}
+
+/* ---- Layer 2: media ---- */
+.media {
+  position: absolute;
+  left: 3%;
+  top: 17%;
+  width: 52%;
+  height: 79%;
+  border-radius: 1cqw;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 60% at 45% 40%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%),
+    linear-gradient(160deg, #1a1d28, #0b0c11);
+  transition: background 500ms ease;
+}
+
+.media svg {
+  position: absolute;
+  inset: 10% 8%;
+  width: 84%;
+  height: 80%;
+}
+
+/* ---- Layer 3: typography ---- */
+.type {
+  position: absolute;
+  left: 61%;
+  top: 22%;
+  width: 34%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1cqw;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: max(7px, 0.85cqw);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  transition: color 400ms ease;
+}
+
+.heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 3.6cqw;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--color-fg);
+  text-transform: uppercase;
+}
+
+.heading em {
+  color: var(--accent);
+  transition: color 400ms ease;
+}
+
+.body {
+  display: grid;
+  gap: 0.7cqw;
+  margin-top: 0.4cqw;
+}
+
+.line {
+  height: 0.6cqw;
+  min-height: 3px;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 0.16);
+}
+
+.price {
+  margin-top: 1.4cqw;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2.1cqw;
+  letter-spacing: -0.02em;
+  color: var(--color-fg);
+}
+
+/* ---- Layer 4: interaction ---- */
+.controls {
+  position: absolute;
+  left: 61%;
+  top: 66%;
+  width: 34%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4cqw;
+}
+
+.swatches {
+  display: flex;
+  gap: max(8px, 1cqw);
+}
+
+.swatch {
+  width: 3.2cqw;
+  height: 3.2cqw;
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  cursor: pointer;
+  transition:
+    transform 200ms var(--ease-out-quart),
+    box-shadow 200ms;
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+.swatch[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 2px #0e1017,
+    0 0 0 3.5px var(--color-fg);
+}
+
+.swatch:focus-visible {
+  outline-offset: 4px;
+}
+
+.buy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 4.4cqw;
+  min-height: 24px;
+  border-radius: 99px;
+  font-size: max(9px, 1.15cqw);
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(120deg, var(--accent-2), var(--accent));
+  box-shadow: 0 1.2cqw 3cqw -1cqw color-mix(in srgb, var(--accent) 80%, transparent);
+  transition: background 400ms ease;
+}
+
+.root[data-accent="white"] .buy {
+  color: #08090d;
+}
+
+.chips {
+  display: flex;
+  gap: 0.8cqw;
+}
+
+.chip {
+  padding: 0.5cqw 0.9cqw;
+  border-radius: 99px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  font-family: var(--font-mono);
+  font-size: max(7px, 0.8cqw);
+  letter-spacing: 0.08em;
+  color: var(--color-fg-2);
+}
+
+.hotspot {
+  position: absolute;
+  width: 2.2cqw;
+  height: 2.2cqw;
+  min-width: 14px;
+  min-height: 14px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border: 1px solid var(--accent);
+  opacity: 0;
+}
+
+.hotspot::after {
+  content: "";
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.label {
+  position: absolute;
+  right: 2.4%;
+  top: 0.7%;
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  font-family: var(--font-mono);
+  font-size: max(7px, 0.8cqw);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-fg-2);
+  opacity: 0;
+}
+
+.label::before {
+  content: "";
+  width: 0.6cqw;
+  height: 0.6cqw;
+  min-width: 4px;
+  min-height: 4px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.labelIndex {
+  color: var(--accent);
+}
+
+.cursor {
+  position: absolute;
+  left: 76%;
+  top: 77%;
+  width: 2.4cqw;
+  min-width: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt,
+  .layerInner {
+    transition: none;
+  }
+}

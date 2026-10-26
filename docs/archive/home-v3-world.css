@@ -1,0 +1,474 @@
+/* ARCHIVE — styles for the v3 3D home ("ENTER THE STUDIO", components/experience + components/world).
+   Not imported. To bring the 3D world back, append this file to src/app/globals.css and restore the
+   intro head script (see LOG.md 2026-10-25). */
+
+/* =========================================================================
+   HOME v3 — "ENTER THE STUDIO" (see docs/REDESIGN-v3.md)
+   html[data-world="on|off"] is set after first paint (reduced motion: before paint, by the head script).
+   ========================================================================= */
+@layer components {
+  .world-off-only {
+    display: none;
+  }
+  [data-world="off"] .world-off-only {
+    display: var(--off-display, block);
+  }
+  [data-world="off"] .world-on-only {
+    display: none !important;
+  }
+
+  /* Statement: emphasised words turn violet and glow as they light up */
+  .statement-word {
+    text-shadow: 0 0 calc(var(--lit, 1) * 22px) rgb(255 255 255 / calc(var(--lit, 1) * 0.18));
+  }
+  .statement-word.statement-em {
+    color: color-mix(in srgb, #b783ff calc(var(--lit, 1) * 100%), rgb(248 249 253 / 0.4));
+    font-style: italic;
+    text-shadow: 0 0 calc(var(--lit, 1) * 30px) rgb(168 85 247 / calc(var(--lit, 1) * 0.6));
+  }
+
+  /* Services / work: one step at a time, stacked in a single grid cell (height = tallest, no jumps) */
+  .services-steps,
+  .work-steps {
+    display: grid;
+  }
+  .service-step {
+    grid-area: 1 / 1;
+    transition:
+      opacity 520ms var(--ease-out-quart),
+      transform 760ms var(--ease-out-expo),
+      filter 520ms var(--ease-out-quart);
+  }
+  .service-step[data-on="true"] {
+    transition-delay: 140ms;
+  }
+  .service-step[data-on="false"] {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+    filter: blur(8px);
+    pointer-events: none;
+  }
+  .service-step[data-on="false"] :is(a, button) {
+    pointer-events: none;
+  }
+  .service-dot {
+    border-radius: 999px;
+    border: 1px solid var(--color-line-strong);
+    padding: 6px 11px;
+    color: var(--color-fg-3);
+    transition:
+      color 300ms ease,
+      background-color 300ms ease,
+      border-color 300ms ease,
+      box-shadow 300ms ease;
+  }
+  .service-dot[data-on="true"] {
+    color: var(--color-fg);
+    border-color: rgb(168 85 247 / 0.7);
+    background: rgb(135 85 232 / 0.2);
+    box-shadow: 0 0 22px -4px rgb(168 85 247 / 0.7);
+  }
+  .work-index {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: baseline;
+    gap: 10px;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    color: var(--color-fg-3);
+    transition:
+      color 300ms ease,
+      transform 500ms var(--ease-out-expo);
+  }
+  .work-index:hover {
+    color: var(--color-fg-2);
+  }
+  .work-index[data-on="true"] {
+    color: var(--color-fg);
+    transform: translate3d(-8px, 0, 0);
+  }
+
+  /* Finale lines rise in with the portal behind them */
+  .finale-line {
+    display: block;
+    opacity: var(--o, 1);
+    transform: translate3d(0, calc((1 - var(--o, 1)) * 0.4em), 0) scale(calc(0.94 + var(--o, 1) * 0.06));
+  }
+  .finale-em {
+    padding-right: 0.08em;
+    background: linear-gradient(90deg, #d4bcff, #a855f7 45%, #3d8bff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 26px rgb(168 85 247 / 0.45));
+  }
+
+  /* Camera plunge flash (opacity driven by the camera rig) and the loop flash */
+  .world-flash,
+  .loop-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(circle at 50% 50%, #fff 0%, #ece4ff 26%, #9d73ff 62%, #2a1660 100%);
+  }
+  .world-flash {
+    z-index: 30;
+  }
+  .loop-flash {
+    z-index: 95;
+  }
+  .loop-flash.is-on {
+    animation: loop-flash 1100ms var(--ease-out-quart) forwards;
+  }
+  @keyframes loop-flash {
+    0% {
+      opacity: 0;
+    }
+    28% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Film grain over the whole world — cinematic texture, nearly free (one small tiled layer, stepped) */
+  .film-grain {
+    position: fixed;
+    inset: -8%;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    background-size: 160px 160px;
+    animation: grain 900ms steps(5) infinite;
+  }
+  @keyframes grain {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    20% {
+      transform: translate3d(-3%, 2%, 0);
+    }
+    40% {
+      transform: translate3d(2%, -3%, 0);
+    }
+    60% {
+      transform: translate3d(-4%, 1%, 0);
+    }
+    80% {
+      transform: translate3d(3%, 3%, 0);
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Chapter rail (≥lg) */
+  .chapter-rail {
+    position: fixed;
+    right: clamp(14px, 1.8vw, 28px);
+    top: 50%;
+    z-index: 40;
+    display: none;
+    translate: 0 -50%;
+    transition: opacity 500ms ease;
+  }
+  @media (min-width: 64rem) {
+    .chapter-rail {
+      display: block;
+    }
+  }
+  .chapter-rail[data-hidden="true"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .chapter-rail ol {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .chapter-tick {
+    display: flex;
+    min-height: 30px;
+    align-items: center;
+    gap: 10px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-fg-3);
+    transition: color 300ms ease;
+  }
+  .chapter-label,
+  .chapter-num {
+    opacity: 0;
+    translate: 6px 0;
+    transition:
+      opacity 300ms ease,
+      translate 400ms var(--ease-out-expo);
+  }
+  .chapter-rail:hover :is(.chapter-label, .chapter-num),
+  .chapter-rail:focus-within :is(.chapter-label, .chapter-num),
+  .chapter-tick[data-on="true"] .chapter-label {
+    opacity: 1;
+    translate: 0 0;
+  }
+  .chapter-bar {
+    position: relative;
+    width: 18px;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 0.2);
+    transition: width 450ms var(--ease-out-expo);
+  }
+  .chapter-tick:hover,
+  .chapter-tick[data-on="true"] {
+    color: var(--color-fg);
+  }
+  .chapter-tick[data-on="true"] .chapter-bar {
+    width: 46px;
+  }
+  .chapter-tick[data-on="true"] .chapter-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--color-violet-bright), var(--color-blue));
+    transform-origin: left;
+    transform: scaleX(var(--chapter-p, 0));
+  }
+
+  /* ---- world OFF (no WebGL / reduced motion): the acts become a normal, readable page ---- */
+  [data-world="off"] .act {
+    height: auto !important;
+  }
+  [data-world="off"] [data-act="hero"] {
+    --ap: 0 !important;
+  }
+  [data-world="off"] [data-act="reel"] {
+    --ap: 0.6 !important;
+  }
+  [data-world="off"] [data-act="finale"] {
+    --ap: 1 !important;
+  }
+  [data-world="off"] .act:not([data-act="hero"]) .act-stage {
+    position: static !important;
+    height: auto !important;
+    min-height: 0;
+    overflow: visible !important;
+    padding-block: clamp(72px, 10vw, 140px) !important;
+  }
+  [data-world="off"] [data-act="hero"] .act-stage {
+    position: relative !important;
+  }
+  [data-world="off"] [data-act="reel"] .act-stage {
+    min-height: 88svh !important;
+  }
+  [data-world="off"] :is(.services-steps, .work-steps) {
+    display: flex;
+    flex-direction: column;
+    gap: 72px;
+  }
+  [data-world="off"] .service-step {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    pointer-events: auto !important;
+  }
+  [data-world="off"] .service-step :is(a, button) {
+    pointer-events: auto;
+  }
+  [data-world="off"] .statement-word {
+    --lit: 1 !important;
+  }
+  [data-world="off"] .film-grain {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .film-grain {
+      animation: none;
+    }
+    .service-step {
+      transition: none;
+    }
+  }
+}
+
+/* ---- THE ENTRANCE (unlayered on purpose: beats utility classes on the navbar) ---- */
+.intro-gate {
+  display: none;
+}
+.intro .intro-gate,
+.intro-short .intro-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: block;
+  animation: gate-failsafe 600ms ease 7.5s forwards;
+}
+.intro-open .intro-gate {
+  pointer-events: none;
+}
+@keyframes gate-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.gate-door {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50.5%;
+  background: #050508;
+  transition: transform 1150ms cubic-bezier(0.7, 0, 0.2, 1) 260ms;
+}
+.gate-door-top {
+  top: 0;
+}
+.gate-door-bottom {
+  bottom: 0;
+}
+.gate-door::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fff 22%, #fff 78%, transparent);
+  box-shadow:
+    0 0 18px 4px rgb(196 160 255 / 0.9),
+    0 0 90px 24px rgb(135 85 232 / 0.5);
+  opacity: 0;
+  transition: opacity 220ms ease 180ms;
+}
+.gate-door-top::after {
+  bottom: 0;
+}
+.gate-door-bottom::after {
+  top: 0;
+}
+.intro-open .gate-door-top {
+  transform: translate3d(0, -101%, 0);
+}
+.intro-open .gate-door-bottom {
+  transform: translate3d(0, 101%, 0);
+}
+.intro-open .gate-door::after {
+  opacity: 1;
+}
+/* the filament flares into a line of light across the screen right before the doors part */
+.gate-flare {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: linear-gradient(90deg, transparent, #fff 18%, #fff 82%, transparent);
+  box-shadow:
+    0 0 24px 6px rgb(206 180 255 / 0.95),
+    0 0 120px 40px rgb(135 85 232 / 0.55);
+  opacity: 0;
+  transform: scaleX(0.2);
+}
+.intro-open .gate-flare {
+  animation: gate-flare 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes gate-flare {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.25) scaleY(1);
+  }
+  30% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(2.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1) scaleY(1);
+  }
+}
+.gate-core {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  transition:
+    opacity 260ms ease,
+    transform 600ms var(--ease-out-expo);
+}
+.intro-short .gate-core,
+.intro-short .gate-hint {
+  display: none;
+}
+.intro-open .gate-core {
+  opacity: 0;
+  transform: scale(1.06);
+}
+.gate-label {
+  color: var(--color-fg-2);
+  letter-spacing: 0.34em;
+}
+.gate-filament {
+  position: relative;
+  width: min(520px, 72vw);
+  height: 1px;
+  background: rgb(255 255 255 / 0.1);
+}
+.gate-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--color-violet), #fff);
+  transform-origin: left;
+  transform: scaleX(0);
+  box-shadow: 0 0 14px 1px rgb(168 85 247 / 0.75);
+}
+.gate-meta {
+  display: flex;
+  width: min(520px, 72vw);
+  justify-content: space-between;
+  color: var(--color-fg-3);
+}
+.gate-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  text-align: center;
+  color: var(--color-fg-3);
+  opacity: 0;
+  animation: hero-fade 600ms ease 1.6s forwards;
+}
+.intro-open .gate-hint {
+  display: none;
+}
+
+/* While the gate is closed the hero copy is painted (LCP) but its entrance waits for the doors */
+.intro-hold :is(.hero-char, .hero-em-char, .hero-fade, .hero-fade-up),
+.intro-hold .hero-em-char::after,
+.intro-hold .scroll-cue-track::after {
+  animation: none !important;
+}
+html.js [data-site-nav] {
+  transition:
+    transform 500ms var(--ease-out-expo),
+    opacity 900ms var(--ease-out-quart) 450ms;
+}
+.intro-hold [data-site-nav],
+.intro-hold .chapter-rail {
+  opacity: 0;
+  animation: nav-failsafe 0s linear 8s forwards;
+}
+@keyframes nav-failsafe {
+  to {
+    opacity: 1;
+  }
+}

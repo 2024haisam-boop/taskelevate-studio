@@ -1,0 +1,1629 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   TASKELEVATE STUDIOS — DESIGN SYSTEM
+   Tokens from brief §05. Do not introduce ad-hoc hex values elsewhere.
+   ========================================================================= */
+
+@theme {
+  /* Colour — lilac paper + deep violet ink (2026-10-26: the studio-layer redesign), the Taskelevate violet/blue as
+     brand accents, pastel tints for media-less cards. */
+  --color-bg: #f6f3fe;
+  --color-bg-2: #ece6fb;
+  --color-bg-3: #ded5f6;
+  --color-fg: #160c2b;
+  --color-fg-2: #4f4566;
+  --color-fg-3: #675e80;
+  --color-ink-2: #2a1f45;
+  --color-violet: #8755e8;
+  --color-violet-bright: #7c3aed;
+  --color-blue: #189be8;
+  --color-lilac: #e9defb;
+  --color-sky: #d6ecff;
+  --color-mint: #d3f4ea;
+  --color-peach: #ffdccc;
+  --color-lime: #effd9c;
+  --color-line: rgb(22 12 43 / 0.09);
+  --color-line-strong: rgb(22 12 43 / 0.18);
+  --color-glass: rgb(0 0 0 / 0.035);
+  --color-glass-line: rgb(0 0 0 / 0.1);
+
+  /* Breakpoints (Tailwind defaults + a narrow-phone step) */
+  --breakpoint-xs: 25rem; /* 400px */
+
+  /* Easing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+
+  /* Fluid display type — sized from measured Space Grotesk Bold advances so the
+     longest line in each slot fits a 320px phone without clipping. */
+  --text-display-xl: clamp(3rem, 1.4rem + 6.4vw, 8rem);
+  --text-display-xl--line-height: 0.95;
+  --text-display-xl--letter-spacing: -0.015em;
+  --text-display-lg: clamp(2.5rem, 1.2rem + 4.4vw, 5.25rem);
+  --text-display-lg--line-height: 0.98;
+  --text-display-lg--letter-spacing: -0.012em;
+  --text-display-md: clamp(2.125rem, 1.2rem + 3.1vw, 4.125rem);
+  --text-display-md--line-height: 1.02;
+  --text-display-md--letter-spacing: -0.01em;
+  --text-display-sm: clamp(1.75rem, 3.8vw, 3rem);
+  --text-display-sm--line-height: 1.02;
+  --text-display-sm--letter-spacing: -0.01em;
+  --text-lead: clamp(1.0625rem, 1.5vw, 1.3125rem);
+  --text-lead--line-height: 1.6;
+  --text-micro: 0.6875rem; /* 11px technical labels */
+  --text-micro--line-height: 1.4;
+  --text-micro--letter-spacing: 0.16em;
+
+  /* Editorial type scale (fluid; measured from the reference at 390–1440px) */
+  --text-ed-hero: clamp(2.5rem, 1.2rem + 4.4vw, 5.25rem);
+  --text-ed-hero--line-height: 1;
+  --text-ed-hero--letter-spacing: -0.012em;
+  --text-ed-xl: clamp(3.25rem, 1.6rem + 5.4vw, 6.75rem);
+  --text-ed-xl--line-height: 0.96;
+  --text-ed-xl--letter-spacing: -0.015em;
+  --text-ed-lead: clamp(1.75rem, 1.05rem + 2.3vw, 3.25rem);
+  --text-ed-lead--line-height: 1.08;
+  --text-ed-lead--letter-spacing: -0.01em;
+  --text-ed-title: clamp(1.5rem, 1.15rem + 1.1vw, 2.25rem);
+  --text-ed-title--line-height: 1.06;
+  --text-ed-title--letter-spacing: -0.008em;
+  --text-ed-mono: clamp(0.75rem, 0.69rem + 0.2vw, 0.9375rem);
+  --text-ed-mono--line-height: 1;
+  --text-ed-mono--letter-spacing: -0.01em;
+
+  /* Radii */
+  --radius-glass: 0.75rem;
+  --radius-panel: 0.75rem;
+  --radius-card: 0.75rem;
+}
+
+@theme inline {
+  --font-display: var(--font-display-serif), "Times New Roman", ui-serif, serif;
+  --font-sans: var(--font-text-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Base                                                                    */
+/* ----------------------------------------------------------------------- */
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --shell-pad: clamp(16px, 2.22vw, 32px);
+    --nav-top: calc(env(safe-area-inset-top, 0px) + 16px);
+    --nav-h: 64px;
+  }
+
+  @media (min-width: 64rem) {
+    :root {
+      --nav-h: 68px;
+    }
+  }
+
+  html {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: calc(var(--nav-top) + var(--nav-h) + 24px);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    min-height: 100svh;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* clip (not hidden) keeps position: sticky working */
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: rgb(135 85 232 / 0.22);
+    color: var(--color-fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-violet-bright);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  /* Synthesised oblique — Space Grotesk ships no italic. */
+  em,
+  .em {
+    font-style: italic;
+    font-synthesis: style;
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+/* Layout utilities                                                        */
+/* ----------------------------------------------------------------------- */
+
+@utility container-x {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 20px;
+  @media (min-width: 48rem) {
+    padding-inline: 32px;
+  }
+  @media (min-width: 80rem) {
+    padding-inline: 64px;
+  }
+}
+
+/* Edge-to-edge editorial shell: content runs to the page margins like the reference layout. */
+@utility shell {
+  width: 100%;
+  padding-inline: var(--shell-pad);
+}
+
+@utility section-y {
+  padding-block: clamp(72px, 10vw, 152px);
+}
+
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@utility hairline {
+  border-color: var(--color-line);
+}
+
+@utility text-violet-em {
+  color: var(--color-fg-3);
+  font-style: normal;
+}
+
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+/* LIQUID GLASS SYSTEM (brief §06)                                         */
+/* Layers: tinted translucent base → backdrop blur + saturation →          */
+/* inner directional light → gradient edge reflection (masked ::before) →  */
+/* cursor-tracked soft reflection (::after, driven by --gx/--gy).          */
+/* ----------------------------------------------------------------------- */
+
+@layer components {
+  /* "Glass" is now a quiet paper surface (light theme) — the class name stays so every component keeps working. */
+  .glass {
+    --glass-tint: rgb(240 240 239 / 0.86);
+    --glass-blur: 16px;
+    position: relative;
+    isolation: isolate;
+    background: var(--glass-tint);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    border: 1px solid transparent;
+  }
+
+  .glass-strong {
+    --glass-tint: rgb(255 255 255 / 0.94);
+    border-color: var(--color-line);
+    box-shadow: 0 18px 50px -28px rgb(0 0 0 / 0.35);
+  }
+
+  .glass-subtle {
+    --glass-tint: rgb(0 0 0 / 0.045);
+    --glass-blur: 10px;
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+      --glass-tint: rgb(240 240 239);
+    }
+  }
+
+  /* ----- Buttons: compact mono pills ------------------------------------- */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    min-height: 40px;
+    padding-inline: 1.1rem;
+    border-radius: 9999px;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 180ms var(--ease-out-quart),
+      background-color 220ms var(--ease-out-quart),
+      color 220ms var(--ease-out-quart);
+  }
+
+  .btn:active {
+    transform: scale(0.975);
+  }
+
+  .btn .btn-arrow {
+    transition: transform 220ms var(--ease-out-expo);
+  }
+
+  .btn:hover .btn-arrow,
+  .btn:focus-visible .btn-arrow {
+    transform: translateX(3px);
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding-inline: 0.95rem;
+  }
+
+  .btn-lg {
+    min-height: 46px;
+    padding-inline: 1.35rem;
+  }
+
+  /* a glassy lilac pill with a violet edge */
+  .btn-primary {
+    color: var(--color-fg);
+    background: linear-gradient(180deg, #f7f3ff, #e4d9fc);
+    box-shadow:
+      inset 0 0 0 1px rgb(124 58 237 / 0.42),
+      inset 0 1px 0 rgb(255 255 255 / 0.95),
+      0 8px 22px -10px rgb(98 52 190 / 0.5);
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(180deg, #ffffff, #ede5ff);
+  }
+
+  /* small purple label pill ("What we do") */
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.42em 0.75em 0.36em;
+    border-radius: 9999px;
+    background: var(--color-violet-bright);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* secondary (was "glass") */
+  .btn-glass {
+    color: var(--color-fg);
+  }
+
+  .btn-glass:hover {
+    --glass-tint: rgb(228 228 225 / 0.95);
+  }
+
+  /* Accent — brand violet, used sparingly for key conversion moments */
+  .btn-accent {
+    color: #fff;
+    background: var(--color-violet-bright);
+  }
+
+  .btn-accent:hover {
+    background: var(--color-violet);
+  }
+
+  /* inverted pill for dark surfaces (footer) */
+  .btn-invert {
+    background: #fff;
+    color: #000;
+  }
+
+  .btn-invert:hover {
+    background: var(--color-bg-3);
+  }
+
+  /* Text link with animated underline */
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size 320ms var(--ease-out-expo), color 200ms;
+  }
+
+  .link-underline:hover,
+  .link-underline:focus-visible {
+    background-size: 100% 1px;
+  }
+
+  /* Small mono tag */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 24px;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    background: var(--color-bg-2);
+    color: var(--color-fg);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+
+  /* Technical frame corner brackets */
+  .corner-frame {
+    --c: rgb(0 0 0 / 0.2);
+    --s: 14px;
+    background:
+      linear-gradient(var(--c), var(--c)) top left / var(--s) 1px,
+      linear-gradient(var(--c), var(--c)) top left / 1px var(--s),
+      linear-gradient(var(--c), var(--c)) top right / var(--s) 1px,
+      linear-gradient(var(--c), var(--c)) top right / 1px var(--s),
+      linear-gradient(var(--c), var(--c)) bottom left / var(--s) 1px,
+      linear-gradient(var(--c), var(--c)) bottom left / 1px var(--s),
+      linear-gradient(var(--c), var(--c)) bottom right / var(--s) 1px,
+      linear-gradient(var(--c), var(--c)) bottom right / 1px var(--s);
+    background-repeat: no-repeat;
+  }
+
+  .tech-grid {
+    background-image:
+      linear-gradient(to right, rgb(0 0 0 / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(0 0 0 / 0.04) 1px, transparent 1px);
+    background-size: 72px 72px;
+    background-position: center center;
+  }
+
+  .noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+/* Scroll reveals (CSS-owned; toggled by components/ui/RevealObserver).     */
+/* Hidden state only applies when JS is running (html.js), so content is   */
+/* always readable if scripts fail.                                        */
+/* ----------------------------------------------------------------------- */
+
+.js [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition:
+    opacity 700ms var(--ease-out-expo),
+    transform 700ms var(--ease-out-expo);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.js [data-reveal="card"] {
+  transform: translate3d(0, 28px, 0) scale(0.985);
+  transition-duration: 450ms, 650ms;
+}
+
+.js [data-reveal="fade"] {
+  transform: none;
+}
+
+.js [data-reveal][data-revealed] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Revealed before first paint (already on screen) — appear immediately, no fade */
+.js [data-reveal][data-instant],
+.js [data-reveal][data-instant] .line-inner {
+  transition: none !important;
+}
+
+/* Masked line reveal for headings (layered so utilities can override padding) */
+@layer components {
+  .line-mask {
+    display: block;
+    overflow: hidden;
+    /* room for oblique overhang + descenders without clipping */
+    padding: 0.04em 0.12em 0.1em;
+    margin: -0.04em -0.12em -0.1em;
+  }
+
+  .line-inner {
+    display: block;
+  }
+}
+
+.js [data-reveal="lines"] {
+  opacity: 1;
+  transform: none;
+}
+
+.js [data-reveal="lines"] .line-inner {
+  transform: translate3d(0, 108%, 0);
+  transition: transform 900ms var(--ease-out-expo);
+  transition-delay: calc(var(--reveal-delay, 0ms) + var(--line, 0) * 90ms);
+}
+
+.js [data-reveal="lines"][data-revealed] .line-inner {
+  transform: none;
+}
+
+/* Word-by-word rise (components/landing/RevealWords) */
+.js [data-reveal="words"] {
+  opacity: 1;
+  transform: none;
+}
+
+.js [data-reveal="words"] .rw {
+  display: inline-block;
+  opacity: 0;
+  transform: translate3d(0, 0.38em, 0);
+  transition:
+    opacity 600ms var(--ease-out-quart),
+    transform 850ms var(--ease-out-expo);
+  transition-delay: calc(var(--reveal-delay, 0ms) + min(var(--i, 0) * 14ms, 700ms));
+}
+
+.js [data-reveal="words"][data-revealed] .rw {
+  opacity: 1;
+  transform: none;
+}
+
+.js [data-reveal="words"][data-instant] .rw {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal="words"] .rw {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal],
+  .js [data-reveal] .line-inner {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+/* HERO ENTRANCE (brief §08) — pure CSS so it starts at first paint.       */
+/* 0.00 label+bg · 0.15 line 1 · 0.55 line 2 · 0.90 sweep · 1.05 copy ·    */
+/* 1.20 CTAs  → settles ≈1.6s                                              */
+/* ----------------------------------------------------------------------- */
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-rise {
+  from {
+    transform: translate3d(0, 112%, 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes hero-rise-em {
+  0% {
+    transform: translate3d(0, 118%, 0) rotate(7deg) scale(1, 1.12);
+  }
+  70% {
+    transform: translate3d(0, -2%, 0) rotate(-0.4deg) scale(1, 0.995);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes hero-sweep {
+  from {
+    background-position: 125% 0;
+  }
+  to {
+    background-position: -25% 0;
+  }
+}
+
+@keyframes scroll-cue {
+  0% {
+    transform: translate3d(0, -100%, 0);
+  }
+  60%,
+  100% {
+    transform: translate3d(0, 220%, 0);
+  }
+}
+
+.hero-fade {
+  animation: hero-fade 700ms var(--ease-out-quart) both;
+  animation-delay: var(--d, 0ms);
+}
+
+.hero-fade-up {
+  animation: hero-fade-up 650ms var(--ease-out-expo) both;
+  animation-delay: var(--d, 0ms);
+}
+
+.hero-char {
+  display: inline-block;
+  will-change: transform;
+  animation: hero-rise 760ms var(--ease-out-expo) both;
+  animation-delay: calc(150ms + var(--i) * 24ms);
+}
+
+.hero-em-char {
+  position: relative;
+  display: inline-block;
+  transform-origin: 0% 100%;
+  will-change: transform;
+  animation: hero-rise-em 820ms var(--ease-out-expo) both;
+  animation-delay: calc(550ms + var(--i) * 30ms);
+}
+
+/* Narrow moving highlight — each glyph carries a slice of one continuous band */
+.hero-em-char::after {
+  content: attr(data-char);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: -0.16em;
+  color: transparent;
+  background-image: linear-gradient(
+    100deg,
+    transparent 38%,
+    rgb(243 232 255 / 0.95) 49%,
+    rgb(255 255 255 / 1) 50%,
+    rgb(243 232 255 / 0.95) 51%,
+    transparent 62%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: hero-sweep 110ms linear both;
+  animation-delay: calc(900ms + var(--i) * 58ms);
+  pointer-events: none;
+}
+
+.scroll-cue-track {
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-cue-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent, var(--color-fg));
+  animation: scroll-cue 2.4s var(--ease-in-out-quart) infinite;
+  animation-delay: 1.6s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-char,
+  .hero-em-char,
+  .hero-fade,
+  .hero-fade-up {
+    animation: hero-fade 400ms ease both !important;
+    animation-delay: 0ms !important;
+  }
+  .hero-em-char::after,
+  .scroll-cue-track::after {
+    animation: none !important;
+    display: none;
+  }
+}
+
+/* Page transition on client navigations only (see app/template.tsx).
+   Opacity only, fill "backwards": a transform (even an identity one) on this wrapper would turn
+   every position:fixed descendant into "fixed to the wrapper". */
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.page-enter {
+  animation: page-in 420ms var(--ease-out-quart) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}
+
+/* Paused state for off-screen CSS loops (toggled via data-paused) */
+[data-paused="true"],
+[data-paused="true"] * {
+  animation-play-state: paused !important;
+}
+
+/* Registered properties so pointer-driven lighting can transition smoothly */
+@property --lx {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+
+@property --ly {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 55%;
+}
+
+.ambient-light {
+  background:
+    radial-gradient(38% 46% at var(--lx) var(--ly), rgb(135 85 232 / 0.2), transparent 70%),
+    radial-gradient(30% 38% at calc(100% - var(--lx)) calc(var(--ly) + 12%), rgb(24 155 232 / 0.11), transparent 70%);
+  transition:
+    --lx 1.6s var(--ease-out-quart),
+    --ly 1.6s var(--ease-out-quart);
+}
+
+/* Above-the-fold headline entrance for inner pages (CSS-only, first paint) */
+.entrance-line {
+  animation: hero-rise 900ms var(--ease-out-expo) both;
+  animation-delay: calc(80ms + var(--line, 0) * 90ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entrance-line {
+    animation: hero-fade 300ms ease both;
+  }
+}
+
+/* =========================================================================
+   HOME v2 — "3D & alive" (see docs/REDESIGN.md)
+   ========================================================================= */
+@layer components {
+  /* Statement: words light up with --lit (0..1) written by JS; readable (lit) without JS */
+  /* starts at 40% (≥ 3:1 for this large text, WCAG AA) and lights to 100% */
+  .statement-word {
+    color: rgb(248 249 253 / calc(0.4 + var(--lit, 1) * 0.6));
+  }
+  .js .statement-word,
+  .js .statement-pill {
+    --lit: 0;
+  }
+  /* fixed footprint → no text reflow while scrolling; only the inner video scales (composited) */
+  .statement-pill {
+    display: inline-block;
+    width: 2.3em;
+    height: 0.78em;
+    margin-right: 0.22em;
+    vertical-align: -0.05em;
+  }
+  .statement-pill-inner {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-bg-3);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+    transform: scale(calc(0.3 + var(--lit, 1) * 0.7));
+    opacity: calc(0.25 + var(--lit, 1) * 0.75);
+  }
+
+  /* Rotating circular badge ("popup rotator") */
+  .badge-spin {
+    animation: badge-spin 14s linear infinite;
+  }
+  @keyframes badge-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  /* Velocity marquee */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 38s linear infinite;
+  }
+  .marquee-track[data-dir="-1"] {
+    animation-direction: reverse;
+  }
+  @keyframes marquee {
+    to {
+      translate: -50% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .badge-spin,
+    .marquee-track {
+      animation: none;
+    }
+    .statement-word,
+    .statement-pill {
+      --lit: 1 !important;
+    }
+  }
+}
+
+/* =========================================================================
+   v4 EDITORIAL (afternow.co format, 2026-10-26) — page sheet + footer reveal
+   ========================================================================= */
+@layer components {
+  .site-sheet {
+    position: relative;
+    z-index: 10;
+    background: var(--color-bg);
+  }
+  @media (min-width: 48rem) {
+    .site-sheet {
+      border-radius: 0 0 calc(var(--radius-card) * 2) calc(var(--radius-card) * 2);
+      box-shadow: 0 34px 70px -34px rgb(70 36 150 / 0.35);
+    }
+    /* the footer waits underneath; the sheet's rounded bottom lifts off it */
+    .footer-reveal {
+      position: sticky;
+      bottom: 0;
+      z-index: 0;
+    }
+  }
+}
+
+/* ---- Home hero: a pinned, drone-shot scroll story over the studio layer (components/landing/HeroStory) ---- */
+@layer components {
+  /* reduced motion: the first block, static */
+  .hero-track {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 104px);
+  }
+  .hero-stage {
+    padding: 0 var(--shell-pad) 56px;
+  }
+  .hero-figure,
+  .hero-meta,
+  .hero-flash,
+  .hero-block:not(:first-child),
+  .hero-arrow {
+    display: none;
+  }
+  .hero-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin-bottom: clamp(14px, 2.2svh, 24px);
+  }
+  .hero-sentence {
+    max-width: 44ch;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--color-fg-2);
+  }
+  .hero-word {
+    display: block;
+    font-style: italic;
+    font-size: clamp(3rem, 1.5rem + 4.8vw, 7rem);
+    line-height: 0.9;
+  }
+  .hero-big {
+    display: block;
+    max-width: 14ch;
+    font-size: clamp(2.5rem, 1.1rem + 4.6vw, 6.6rem);
+    line-height: 0.9;
+    letter-spacing: -0.004em;
+    text-transform: uppercase;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-track {
+      height: 900svh;
+      padding-top: 0;
+    }
+    .hero-stage {
+      --hole: 0px;
+      --cx: 50%;
+      --cy: 40%;
+      --h: 0;
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      overflow: hidden;
+      padding: 0;
+    }
+    /* the figure's anchor: only its size matters (the drone camera frames it) */
+    .hero-figure {
+      display: block;
+      position: absolute;
+      left: 50%;
+      top: 12%;
+      width: min(42svh, 64vw);
+      aspect-ratio: 1;
+      translate: -50% 0;
+      pointer-events: none;
+    }
+    .hero-blocks {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      color: #fff;
+      pointer-events: none;
+    }
+    .hero-block,
+    .hero-block:not(:first-child) {
+      display: block;
+      position: absolute;
+      left: var(--shell-pad);
+      right: var(--shell-pad);
+      bottom: clamp(60px, 9svh, 96px);
+      will-change: transform, opacity, filter;
+      /* the colour split while a block warps (set from HeroStory) */
+      text-shadow:
+        calc(var(--split, 0px) * -1) 0 0 rgb(64 255 214 / var(--sa, 0)),
+        var(--split, 0px) 0 0 rgb(255 72 196 / var(--sa, 0)),
+        0 2px 30px rgb(30 10 70 / 0.35);
+    }
+    .hero-sentence {
+      color: #fff;
+      font-size: 0.875rem;
+    }
+    .hero-meta {
+      position: absolute;
+      left: var(--shell-pad);
+      right: var(--shell-pad);
+      bottom: clamp(18px, 3svh, 30px);
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: rgb(255 255 255 / 0.82);
+      pointer-events: none;
+      opacity: calc(1 - var(--h) * 1.3);
+    }
+    .hero-hint {
+      opacity: clamp(0, calc(1 - var(--h) * 14), 1);
+    }
+    /* through the ring: a white halo floods the screen and hands over to the paper below */
+    .hero-flash {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: radial-gradient(
+        circle at var(--cx) var(--cy),
+        var(--color-bg) 0,
+        var(--color-bg) calc(var(--hole) * 0.7),
+        rgb(255 255 255 / 0.95) calc(var(--hole) * 0.92),
+        rgb(255 255 255 / 0) calc(var(--hole) * 1.35)
+      );
+    }
+    html[data-studio="off"] .hero-blocks,
+    html[data-studio="off"] .hero-meta,
+    html[data-studio="off"] .hero-sentence {
+      color: var(--color-fg);
+      text-shadow: none;
+    }
+  }
+  @media (min-width: 48rem) and (prefers-reduced-motion: no-preference) {
+    .hero-block[data-pos="bottom"] .hero-lines {
+      display: grid;
+      grid-template-columns: minmax(max-content, 25%) minmax(0, 1fr);
+      column-gap: 3vw;
+      align-items: start;
+    }
+    .hero-block[data-pos="bottom"] .hero-word {
+      display: flex;
+      align-items: baseline;
+      gap: 0.25em;
+    }
+    .hero-block[data-pos="bottom"] .hero-arrow {
+      display: none;
+    }
+    .hero-block[data-pos="left"],
+    .hero-block[data-pos="right"] {
+      top: 50%;
+      bottom: auto;
+      width: min(44vw, 760px);
+      translate: 0 -38%;
+    }
+    .hero-block[data-pos="left"] {
+      right: auto;
+    }
+    .hero-block[data-pos="right"] {
+      left: auto;
+    }
+    .hero-block:not([data-pos="bottom"]) .hero-word,
+    .hero-block:not([data-pos="bottom"]) .hero-big {
+      display: inline;
+    }
+    .hero-block:not([data-pos="bottom"]) .hero-word {
+      margin-right: 0.22em;
+      font-size: clamp(2.6rem, 1.2rem + 4vw, 5.8rem);
+    }
+    .hero-block:not([data-pos="bottom"]) .hero-big {
+      font-size: clamp(2.4rem, 1rem + 4vw, 5.6rem);
+    }
+  }
+
+  /* text decode (lib/animations/decode): scrambling glyphs sit on transparent letters, so nothing reflows */
+  .dc-word {
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .dc {
+    position: relative;
+  }
+  .dc-s {
+    color: transparent;
+  }
+  .dc-s::after {
+    content: attr(data-g);
+    position: absolute;
+    left: 0;
+    bottom: 0.08em;
+    font-family: var(--font-mono);
+    font-size: 0.72em;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--color-violet);
+  }
+
+  .label-mono .dc-s::after {
+    bottom: auto;
+    top: 0;
+    font-size: 1em;
+    line-height: inherit;
+  }
+
+  /* frosted glass over the studio layer: the liquid and the figure show through */
+  .glass-clear,
+  .nav-group[data-scrolled="true"] {
+    background: rgb(255 255 255 / 0.46);
+    -webkit-backdrop-filter: blur(18px) saturate(1.8);
+    backdrop-filter: blur(18px) saturate(1.8);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.65),
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 12px 32px -14px rgb(70 36 150 / 0.28);
+  }
+
+  /* the studio layer (components/studio/StudioCanvas): spans the page sheet exactly; the canvas inside is sticky,
+     so it leaves with the sheet and never covers the footer curtain */
+  .studio-layer {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .studio-pin {
+    position: sticky;
+    top: 0;
+    height: 100lvh;
+    max-height: 100%;
+  }
+}
+
+/* ---- What we do (components/landing/WhatWeDo): pinned statement fill + capability wheel ---- */
+@layer components {
+  .wwd-stage {
+    display: grid;
+    gap: 48px;
+    padding-block: 96px;
+  }
+  .wwd-statement {
+    max-width: 14em;
+    font-size: clamp(1.6rem, 0.95rem + 2.7vw, 3.5rem);
+    line-height: 1.06;
+    letter-spacing: -0.01em;
+    color: var(--color-fg);
+  }
+  .wwd-statement [data-w] {
+    transition: opacity 160ms linear;
+  }
+  .wwd-pill {
+    margin-right: 0.9rem;
+    vertical-align: 0.7em;
+    font-size: 0.75rem;
+  }
+  .wwd-arrow {
+    margin-right: 0.3em;
+    font-family: var(--font-sans);
+    font-size: 0.55em;
+    vertical-align: 0.2em;
+  }
+  .wwd-wheel {
+    --row: clamp(44px, 3.9vw, 60px);
+  }
+  .wwd-row {
+    height: var(--row);
+  }
+  .wwd-link {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    align-items: center;
+    height: 100%;
+  }
+  .wwd-num {
+    font-size: 0.75rem;
+    color: var(--color-fg-3);
+  }
+  .wwd-mark {
+    display: none;
+    font-family: var(--font-sans);
+    font-size: 1.5rem;
+    color: var(--color-fg);
+  }
+  .wwd-row[data-active="true"] .wwd-mark {
+    display: inline;
+  }
+  .wwd-row[data-active="true"] .wwd-idx {
+    display: none;
+  }
+  .wwd-name {
+    justify-self: end;
+    text-align: right;
+    font-family: var(--font-sans);
+    font-size: clamp(1.25rem, 0.85rem + 1.25vw, 2.05rem);
+    font-weight: 450;
+    letter-spacing: -0.025em;
+    color: var(--color-fg);
+    transition: transform 400ms var(--ease-out-expo);
+  }
+  .wwd-link:hover .wwd-name {
+    transform: translateX(-6px);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .wwd-track {
+      height: 420svh;
+    }
+    .wwd-stage {
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      align-content: space-between;
+      padding-block: calc(var(--nav-h) + 28px) 28px;
+    }
+    .wwd-wheel {
+      height: calc(var(--row) * 5.2);
+      overflow: hidden;
+    }
+    .wwd-list {
+      padding-top: calc(var(--row) * 1.1);
+      will-change: transform;
+    }
+  }
+  .wwd-copy {
+    grid-area: copy;
+  }
+  .wwd-more {
+    grid-area: more;
+    justify-self: start;
+    align-self: end;
+  }
+  .wwd-wheel {
+    grid-area: wheel;
+  }
+  .wwd-stage {
+    grid-template-areas: "copy" "more" "wheel";
+  }
+  @media (min-width: 64rem) {
+    .wwd-stage {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      grid-template-rows: 1fr auto;
+      grid-template-areas: "copy ." "more wheel";
+      column-gap: 6vw;
+    }
+    .wwd-wheel {
+      align-self: end;
+    }
+  }
+  @media (min-width: 64rem) and (prefers-reduced-motion: no-preference) {
+    .wwd-wheel {
+      height: calc(var(--row) * 7);
+    }
+    .wwd-list {
+      padding-top: calc(var(--row) * 1.5);
+    }
+  }
+}
+
+/* ---- Home sections (components/landing) ---- */
+@layer components {
+  .svc-card {
+    display: flex;
+    flex: 1 1 0%;
+    min-width: 0;
+    transition: flex-grow 700ms var(--ease-out-expo);
+  }
+  .svc-link {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    background: var(--color-bg-2);
+    padding: 24px;
+    color: var(--color-fg);
+    transition:
+      background-color 450ms var(--ease-out-quart),
+      color 450ms var(--ease-out-quart);
+  }
+  .svc-media {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 600ms var(--ease-out-quart);
+  }
+  .svc-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.35) 60%, rgb(0 0 0 / 0.6));
+  }
+  .svc-chip {
+    background: rgb(0 0 0 / 0.06);
+    transition: background-color 450ms var(--ease-out-quart);
+  }
+  @media (hover: hover) and (min-width: 48rem) {
+    .svc-row:hover .svc-card {
+      flex-grow: 0.85;
+    }
+    .svc-row .svc-card:hover {
+      flex-grow: 1.7;
+    }
+    .svc-link:hover,
+    .svc-link:focus-visible {
+      background: #000;
+      color: #fff;
+    }
+    .svc-link:hover .svc-media,
+    .svc-link:focus-visible .svc-media {
+      opacity: 1;
+    }
+    .svc-link:hover .svc-chip,
+    .svc-link:focus-visible .svc-chip {
+      background: rgb(255 255 255 / 0.16);
+      color: #fff;
+    }
+  }
+
+  .news-toast {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) scale(0.98);
+    pointer-events: none;
+    transition:
+      opacity 500ms var(--ease-out-quart),
+      transform 700ms var(--ease-out-expo);
+  }
+  .news-toast[data-show="true"] {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  /* Approach: the process cards pin while you scroll; the spacer gives each step an equal stretch of the track.
+     Progress (--ap, 0 → 1) comes from ApproachSlider; each tab bar fills during its own step. */
+  .approach-track {
+    --ap: 0;
+  }
+  .approach-track::after {
+    content: "";
+    display: block;
+    height: calc(var(--steps) * 55svh);
+  }
+  .approach-stage {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 76px);
+  }
+  @media (min-width: 64rem) {
+    .approach-stage {
+      top: max(96px, calc((100svh - min(540px, 100svh - 180px)) / 2 + 24px));
+    }
+  }
+  /* the live render: 4:3 on phones (16:10 on short ones and tablets), as tall as the card beside it on desktop */
+  .approach-visual {
+    aspect-ratio: 4 / 3;
+  }
+  @media (max-height: 740px), (min-width: 48rem) {
+    .approach-visual {
+      aspect-ratio: 16 / 10;
+    }
+  }
+  @media (min-width: 64rem) {
+    .approach-visual {
+      aspect-ratio: auto;
+    }
+  }
+  .approach-bar {
+    transform-origin: 0 50%;
+    transform: scaleX(clamp(0, calc(var(--ap) * var(--steps) - var(--k)), 1));
+  }
+
+  .approach-text {
+    animation: approach-in 700ms var(--ease-out-expo) both;
+  }
+  @keyframes approach-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 18px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .svc-card,
+    .svc-link,
+    .svc-media,
+    .news-toast {
+      transition: none;
+    }
+    .approach-text {
+      animation: none;
+    }
+  }
+}
+
+/* Dark media panels (service visuals, product viewer, edit monitor, project art) keep the original dark studio
+   palette inside a light page — the tokens are re-scoped, so every component inside works unchanged. */
+@layer components {
+  .theme-dark {
+    --color-bg: #08090d;
+    --color-bg-2: #0e1017;
+    --color-bg-3: #151720;
+    --color-fg: #f8f9fd;
+    --color-fg-2: #afb3c1;
+    --color-fg-3: #777c8d;
+    --color-violet-bright: #a855f7;
+    --color-line: rgb(255 255 255 / 0.09);
+    --color-line-strong: rgb(255 255 255 / 0.16);
+    --color-glass: rgb(255 255 255 / 0.055);
+    --color-glass-line: rgb(255 255 255 / 0.14);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+  .theme-dark .glass {
+    --glass-tint: rgb(20 22 30 / 0.6);
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  .theme-dark .corner-frame {
+    --c: rgb(255 255 255 / 0.28);
+  }
+  .theme-dark .tech-grid {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.034) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.034) 1px, transparent 1px);
+  }
+  .theme-dark .chip {
+    background: rgb(255 255 255 / 0.08);
+  }
+}
+
+/* =========================================================================
+   LANDING INTRO (components/landing/Preloader) — the reference sequence as a CSS timeline from first paint:
+   0.12–1.2s logo assembles slice by slice · 0.5s dot slides in · 1.5–2.4s row glides up + white curtain
+   retracts · 2.25s nav expands out of the menu dot, pill wipes in · 2.25s page released (hero animates in).
+   Only with html.intro (head script: hard load of "/", motion allowed).
+   ========================================================================= */
+.preloader {
+  display: none;
+}
+.intro .preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: block;
+  pointer-events: none;
+  animation: pl-gone 1ms linear 2700ms forwards;
+}
+.preloading {
+  overflow: hidden;
+}
+/* the paper opens from the middle: a circle with a soft white glow at its edge, the scene behind it */
+@property --pr {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+.preloader-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg);
+  -webkit-mask: radial-gradient(circle at 50% 42%, transparent var(--pr), #000 calc(var(--pr) + 9%));
+  mask: radial-gradient(circle at 50% 42%, transparent var(--pr), #000 calc(var(--pr) + 9%));
+  animation: pl-open 1150ms cubic-bezier(0.65, 0, 0.35, 1) 1500ms both;
+}
+.preloader-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 42%, rgb(255 255 255 / 0) calc(var(--pr) - 4%), rgb(255 255 255 / 0.95) var(--pr), rgb(255 255 255 / 0) calc(var(--pr) + 10%));
+}
+.preloader-row {
+  position: relative;
+  transform: translate3d(0, calc(50svh - 31px), 0);
+  animation: pl-up 900ms cubic-bezier(0.65, 0, 0.35, 1) 1500ms forwards;
+}
+@media (min-width: 48rem) {
+  .preloader-row {
+    transform: translate3d(0, calc(50svh - 33px), 0);
+  }
+}
+.preloader-slice {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+  transform: scaleX(0);
+  transform-origin: 50% 50%;
+  animation: pl-slice 520ms cubic-bezier(0.8, 0, 0.2, 1) calc(120ms + var(--i, 0) * 55ms) forwards;
+}
+.preloader-slice img {
+  position: absolute;
+  top: 0;
+  max-width: none;
+}
+.preloader-label {
+  opacity: 0;
+  animation: pl-fade 500ms ease 950ms forwards;
+}
+.preloader-dot {
+  display: grid;
+  grid-template-columns: repeat(2, 5px);
+  place-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: #000;
+  opacity: 0;
+  animation:
+    pl-dot-in 650ms cubic-bezier(0.16, 1, 0.3, 1) 520ms forwards,
+    pl-dot-out 260ms cubic-bezier(0.5, 0, 0.75, 0) 2240ms forwards;
+}
+
+/* the real header takes over: menu dots land, links expand out of the dot (right → left), the pill wipes in */
+.intro .menu-dot {
+  animation: hd-dot 520ms cubic-bezier(0.16, 1, 0.3, 1) 2280ms backwards;
+}
+.intro [data-site-nav] .nav-links > li {
+  animation: hd-link 650ms cubic-bezier(0.25, 1, 0.5, 1) backwards;
+}
+.intro [data-site-nav] .nav-links > li:nth-child(3) {
+  animation-delay: 2380ms;
+}
+.intro [data-site-nav] .nav-links > li:nth-child(2) {
+  animation-delay: 2480ms;
+}
+.intro [data-site-nav] .nav-links > li:nth-child(1) {
+  animation-delay: 2580ms;
+}
+.intro [data-site-nav] .nav-cta {
+  animation: hd-pill 800ms cubic-bezier(0.65, 0, 0.35, 1) 2250ms backwards;
+}
+
+/* content waits under the curtain, then comes in */
+.intro .hero-track + *,
+.intro .hero-play {
+  animation: content-in 900ms cubic-bezier(0.25, 1, 0.5, 1) 250ms backwards;
+}
+.preloading :is(.hero-line, .hero-frame, .hero-play),
+.preloading .hero-track + * {
+  animation-play-state: paused !important;
+}
+@media (min-width: 48rem) and (prefers-reduced-motion: no-preference) {
+  .intro .hero-blocks,
+  .intro .hero-meta {
+    animation: content-in 900ms cubic-bezier(0.25, 1, 0.5, 1) 250ms backwards;
+  }
+  .preloading :is(.hero-blocks, .hero-meta) {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes pl-gone {
+  to {
+    visibility: hidden;
+  }
+}
+@keyframes pl-open {
+  from {
+    --pr: 0%;
+  }
+  to {
+    --pr: 112%;
+  }
+}
+@keyframes pl-curtain {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0);
+  }
+}
+@keyframes pl-up {
+  to {
+    transform: none;
+  }
+}
+@keyframes pl-slice {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes pl-fade {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pl-dot-in {
+  from {
+    opacity: 0;
+    transform: translate3d(48px, 0, 0) scale(0.35);
+    background: #c1c2bc;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    background: #000;
+  }
+}
+@keyframes pl-dot-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 1;
+    transform: scale(0);
+  }
+}
+@keyframes hd-dot {
+  from {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hd-link {
+  from {
+    opacity: 0;
+    transform: translate3d(-45%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hd-pill {
+  from {
+    clip-path: inset(0 0 0 100% round 24px);
+    transform: translate3d(36px, 0, 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 24px);
+    transform: none;
+  }
+}
+@keyframes content-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes reel-open {
+  from {
+    clip-path: inset(0 50% 0 50%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ---- SCRUB REVEAL (components/ui/ScrubReveal): media unmasks top → bottom as it scrolls in ---- */
+.js [data-scrub] {
+  --rv: 0;
+}
+.scrub-mask {
+  clip-path: inset(0 0 calc((1 - var(--rv, 1)) * 100%) 0 round var(--radius-card));
+}
+.scrub-zoom {
+  position: absolute;
+  inset: 0;
+  transform: scale(calc(1.18 - var(--rv, 1) * 0.18));
+  transform-origin: 50% 0%;
+}
+.scrub-text {
+  opacity: clamp(0, calc(var(--rv, 1) * 2.4 - 1.3), 1);
+  transform: translate3d(0, calc((1 - var(--rv, 1)) * 22px), 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-scrub] {
+    --rv: 1 !important;
+  }
+}
