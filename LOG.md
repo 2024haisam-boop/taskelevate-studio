@@ -487,3 +487,18 @@ gesture is spent:
 exactly one section (01→02→03→04, back to 03, key → 04), three violent swipes in a row = one section, ring → fly-through
 lands on What-we-do with no overshoot, swipe back returns to the ring; repeated runs stable. In-page timing: warp
 217→867 ms, settled 1366 ms (step 1); 183→750 / 1183 ms (step 2).
+
+## [2026-10-26] — Claude (Opus 5.5) — footer reveal on mobile too — DONE
+**User request:** "the footer on mobile is not like on laptop — the reveal of footer, I need the same".
+**Why it was laptop-only:** `position: sticky; bottom: 0` pins the footer's *bottom* to the screen; on phones the
+footer (1025 px at 390×844) is taller than the screen, so its top would never have been reachable.
+**What I did:** `.site-sheet` rounded bottom + shadow and `.footer-reveal` sticky on every size, with
+`bottom: min(0px, 100svh − var(--footer-h))`: a short footer waits pinned to the bottom (laptop, unchanged), a tall
+one waits with its top at the top of the screen, is uncovered as the sheet lifts, then scrolls on normally.
+`components/layout/FooterReveal.tsx` (client, inside Footer) publishes `--footer-h` (ResizeObserver) and sets
+`data-far` (→ opacity 0) while the sheet's end (`[data-sheet-end]`, last child of `<main>`) is more than a screen
+below, so an iOS overscroll bounce at the top can't show the parked footer. `.studio-layer` now `border-radius:
+inherit; overflow: clip` — the opaque studio canvas was painting square corners over the sheet's rounded bottom
+(laptop too); `clip` keeps the canvas sticky.
+**Verified:** phone /about: footer top stays at 0 while the sheet's bottom rises 464 → 253 → 0, then scrolls with it;
+rounded corners + shadow on both sizes; home hero canvas still pinned.

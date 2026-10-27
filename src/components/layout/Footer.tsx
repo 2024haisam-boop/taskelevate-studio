@@ -2,21 +2,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { footerNav } from "@/data/navigation";
 import { siteConfig } from "@/data/site-config";
+import { FooterReveal } from "./FooterReveal";
 import logoDark from "../../../public/brand/taskelevate-logo-dark.png";
 
 const linkClass = "group inline-flex min-h-8 max-w-full flex-wrap items-baseline gap-x-2 font-mono text-[0.8125rem] uppercase tracking-[0.01em] text-fg transition-colors hover:text-violet-bright";
 
 /**
  * Closing footer on lilac paper: a pill, the big serif sign-off and the CTA on the left; a line, then numbered mono
- * link columns on the right; logo and the legal line below. On ≥md it is sticky at the bottom and the page sheet
- * lifts off it as you reach the end (`.site-sheet` / `.footer-reveal` in globals.css). Only configured channels
- * are linked.
+ * link columns on the right; logo and the legal line below. It waits under the page and the page sheet lifts off
+ * it as you reach the end, on every screen size (`.site-sheet` / `.footer-reveal` in globals.css, FooterReveal).
+ * Only configured channels are linked.
  */
 export function Footer() {
   const year = new Date().getFullYear();
 
   return (
     <footer id="site-footer" className="footer-reveal bg-[#ece5fc] text-fg">
+      <FooterReveal />
       <div className="shell flex flex-col pb-[calc(env(safe-area-inset-bottom,0px)+24px)] pt-[clamp(64px,7vw,112px)]">
         <div className="grid gap-14 lg:grid-cols-12">
           <div className="lg:col-span-6">

@@ -823,18 +823,20 @@
     position: relative;
     z-index: 10;
     background: var(--color-bg);
+    border-radius: 0 0 calc(var(--radius-card) * 2) calc(var(--radius-card) * 2);
+    box-shadow: 0 34px 70px -34px rgb(70 36 150 / 0.35);
   }
-  @media (min-width: 48rem) {
-    .site-sheet {
-      border-radius: 0 0 calc(var(--radius-card) * 2) calc(var(--radius-card) * 2);
-      box-shadow: 0 34px 70px -34px rgb(70 36 150 / 0.35);
-    }
-    /* the footer waits underneath; the sheet's rounded bottom lifts off it */
-    .footer-reveal {
-      position: sticky;
-      bottom: 0;
-      z-index: 0;
-    }
+  /* The footer waits underneath and the sheet's rounded bottom lifts off it — on every screen size. A footer taller
+     than the screen (phones) waits with its top at the top of the screen, is uncovered, then scrolls on as usual:
+     `--footer-h` comes from FooterReveal. Until the end of the page is near it stays transparent, so an overscroll
+     bounce at the top can never show it. */
+  .footer-reveal {
+    position: sticky;
+    bottom: min(0px, calc(100svh - var(--footer-h, 0px)));
+    z-index: 0;
+  }
+  .footer-reveal[data-far="true"] {
+    opacity: 0;
   }
 }
 
@@ -1084,6 +1086,9 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    /* follow the sheet's rounded bottom (clip, not hidden: the canvas inside stays sticky) */
+    border-radius: inherit;
+    overflow: clip;
   }
   .studio-pin {
     position: sticky;

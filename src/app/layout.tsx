@@ -123,11 +123,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Landing intro — rendered for every route but only shown with html.intro (hard load of "/") */}
         <Preloader />
         <Navbar />
-        {/* The page sits on a white sheet with rounded bottom corners that lifts off the black footer (≥md). */}
+        {/* The page sits on a sheet with rounded bottom corners that lifts off the footer waiting underneath. */}
         <main id="main-content" tabIndex={-1} className="site-sheet outline-none">
           {/* the living layer under every page: liquid ink + the studio figure (anchored by [data-figure]) */}
           <StudioCanvas />
           {children}
+          <div aria-hidden="true" data-sheet-end="" />
         </main>
         <Footer />
         {/* Before first paint: anything already in the viewport is shown immediately (no fade) and never waits
