@@ -11,6 +11,8 @@ import { ContactCTA } from "@/components/sections/ContactCTA";
 import { Headline } from "@/components/ui/Headline";
 import { ProjectArt } from "@/components/work/ProjectArt";
 import { ProjectCard } from "@/components/work/ProjectCard";
+import { FilmWall } from "@/components/work/FilmWall";
+import { saasFilms } from "@/data/saas-films";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils/cn";
 
@@ -155,6 +157,18 @@ export default async function ProjectPage({ params }: { params: Params }) {
             </ul>
           </section>
         ) : null}
+
+        {project.films === "saas" && (
+          <section aria-labelledby="films-title" className="container-x section-y border-t border-line">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <h2 id="films-title" className="label-mono text-fg-3">
+                The films · {saasFilms.length}
+              </h2>
+              <p className="max-w-[52ch] text-[0.9rem] text-fg-3">Tap a film to watch it with sound. Pieces tagged “Concept” are self-initiated and were not made for the brand shown.</p>
+            </div>
+            <FilmWall films={saasFilms} className="mt-10" />
+          </section>
+        )}
 
         {project.process?.length ? (
           <section aria-labelledby="approach-title" className="border-t border-line bg-bg-2/40">

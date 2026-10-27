@@ -502,3 +502,96 @@ inherit; overflow: clip` — the opaque studio canvas was painting square corner
 (laptop too); `clip` keeps the canvas sticky.
 **Verified:** phone /about: footer top stays at 0 while the sheet's bottom rises 464 → 253 → 0, then scrolls with it;
 rounded corners + shadow on both sizes; home hero canvas still pinned.
+
+## [2026-10-27] — Claude (Opus 5.5) — low-end devices + header stays clean through the hero — DONE
+**User request:** smooth and quick to open on every device incl. low-RAM Android; on the home page the header
+coating must not change during the six hero sections — the glass appears only once you are inside the studio.
+**Header (refined after the user's screenshot):** laptops+ keep the glass menu pill from the first scroll (hero
+included) with the plain logo, as before; phones keep logo + menu button clear through the home hero and get the
+glass bar + pill once the hero has scrolled away (`data-solid`; other pages: after 24 px). CSS: `.nav-group[data-glass]`
+(Navbar sets it from `scrolled` on ≥48rem, `solid` below). Re-reads on route change.
+**Device tier (`lib/device.ts`):** low = deviceMemory ≤ 2 GB, Android with ≤ 4 cores, Save-Data, or an entry-level GPU
+(`weakGpu`: Mali-T/G3x/G5x, Adreno 2xx–61x, PowerVR, …, via the renderer string). iPhones: no change.
+Low tier keeps every effect, with fewer pixels / particles / passes:
+- StudioCanvas: 96² particles on phones (128² larger), fluid sim 64 / dye 224 (phones), 10 pressure passes, render
+  scale ≤ 1.0 on phones (1.25 larger), adaptive floor 0.6.
+- HeroCopyGL: texture scale 1.25 (the DOM copy is shown at rest, so reading stays crisp); keeps only the blocks around
+  the current one; webglcontextlost → falls back to the DOM copy.
+- ProcessVisual: canvas scale ≤ 1.25 phones / 1.5 (point sizes follow).
+**Opening / no hitches (all devices):** HeroCopyGL is now created just after the intro (its 3 shader programs no longer
+compile during load); ProcessVisual sets up only when its section is ~a screen away (no compile + 7.5k-point build at
+load); PhysicsChips fetches/parses matter-js in idle time ~1.5 screens before, starts on arrival as before.
+**Measured (Chrome, simulated 2 GB / 4-core Android 412×915@2.625, CPU 6×, prod):** studio canvas 618×1373 → 412×915,
+hero texture 824×1830 → 515×1144; page scroll 0 dropped frames (was one 83 ms hitch from the chips' library parse);
+hero / glide 1–3 slow frames each. Header: laptop — clear at the top, glass pill in the hero and after; phone — clear
+through the hero, glass once in the studio; /about after 24 px. Process render + chips verified on arrival.
+
+## [2026-10-27] — Claude (Opus 5.5) — SaaS animation library (25 real films) — DONE
+**User request:** attach the SaaS animation work — folder `real asset/Saas Animation/` (32 numbered MP4s, 96 MB).
+**Reviewed every film** (5-frame strips + last 3 s of each, for logos / credits):
+- 26.mp4 = byte-identical to the existing `saas-launch-explainer` → skipped.
+- Signed by other creators/studios → **left out (user: "not ours")**: 21 (Perspective Motion promo), 24 (Lovable ×
+  joemotions), 25 (dnyxstudios), 35 (@arpan.motions), and 14 (Byshub.exe end card), 20 (avatar end card).
+- Built around big brands → **user: concept pieces** → shown with a "Concept" tag + "self-initiated, not made for
+  <brand>": 01 Google Drive, 07 Notion, 17 Perplexity, 19 Framer, 22 Stripe, 33 Spotify, 37 ChatGPT; also 04 Flaticon
+  (not in the user's list — tagged Concept to be safe; confirm).
+- The other 17 end on their own product's logo → shown as studio work, **no client names in copy** (titles = the
+  films' own taglines; the "kind" lines describe the product category as seen on screen — confirm/correct).
+**Encoded** (`scripts/encode-work.sh`, new env knobs PREVIEW_W/PREVIEW_CRF/FULL_CRF/FULL_PRESET/X264_TUNE/AUDIO_KBPS/
+OUT_ROOT): `public/media/work/saas/<nn>/` — 6 s muted previews ≤854 px (5.1 MB total), posters (1 MB), full films
+CRF 31 slow + tune animation, AAC 96k (55 MB, loaded only on play). Montage reel for the collection card:
+`public/media/work/saas-animation-films/` (12 product-UI moments, no end cards).
+**Site:** `src/data/saas-films.ts` (the list + integrity notes); `components/work/FilmWall.tsx` — columns of mixed-shape
+cards (preview loops in view, "Concept" tag, duration) + a native <dialog> player with sound (Esc / ← → / prev-next,
+focus returns); new project `saas-animation-films` (first card on home + work page SaaS filter) whose page shows the
+whole wall; SaaS service page: 6 films + "All 25 SaaS films". WorkGrid layout now adapts to any project count (rows of
+three after the feature row; the start-a-project tile completes an unfinished last row).
+**Verified:** trusted click → film plays with sound (desktop 1068×601, phone 358×201), next/close/focus OK; home grid
+balanced (8 projects + tile); service page strip.
+**QA:** overflow + clipped-headline sweep, 13 routes (incl. /work/saas-animation-films) × 10 viewports = 130 checks, 0
+problems (run in one Chrome session — launching a fresh headless Chrome per page stalled intermittently on this Mac;
+`scripts/qa-matrix.mjs` now gives each page 45 s and one retry). `npm run check` ✓.
+
+## [2026-10-27] — Claude (Opus 5.5) — hero steps never miss + emotion-style burst — DONE
+**User:** "sometimes it doesn't scroll" (one section per gesture) and "the burst is like a heartbeat — make it like the
+site I gave you".
+**Why steps were missed:** a new trackpad flick made while the previous one's momentum was still fading counted as the
+same gesture (no 220 ms pause); any gesture during the 1.25 s glide was dropped; on phones swipes starting on the
+header were ignored and short quick flicks (< 24 px) didn't count.
+**Fix (HeroStory):** wheel gestures split on a pause OR on a real new flick over a dying tail (event *rate* jumping
+> 2.5× the fading tail, once the gesture is 300 ms old — rates, so coalesced events can't fake it) OR a direction change;
+a gesture during a glide is queued (latest wins) and plays as the glide lands — still one section at a time; swipes
+count anywhere on screen (header included: `html[data-hero-steps="on"] [data-site-nav]` gets touch-action too) except
+the menu sheet; quick flicks ≥ 8 px count (not when the touch starts on a button/link — a tap stays a tap); the lift
+point comes from `changedTouches`. Tests: long 2.7 s-tail flick = 1 step; flick + new flick in its tail = 2; mouse
+wheel spun 1.6 s = 1; swipe during a glide = queued; header swipe ✓; shaky tap on the menu = no step.
+**Burst (studied emotion-agency.com live: 26 s idle + scroll transitions, frame by frame):** theirs never breathes — at
+a change of shape (and now and then) the form flashes pink-white for ~0.5 s and a light spray of edge particles shoots
+out like sparks and is pulled back; the silhouette stays crisp. Ours now: `figure.ts` — one-step kick (`uKick`) to
+1.5–5.5 % of particles (edge-weighted), 2–5.5 × scale outward+random, spring eased (scatter 0.6) then home; `uFlash`
+(up in 50 ms, e^(−t/0.36 s)) drives glow; glow lifts colour toward pink-white keeping the shading, points grow ≤ 22 %.
+StudioCanvas fires it on every shape change (each hero section) and every 6–9.5 s at rest. The old envelope (target
+pushed out + in = the "heartbeat") is gone.
+
+## [2026-10-27] — Claude (Opus 5.5) — glitter beads like the reference + a live 3D configurator on Interactive Websites — DONE
+**User:** "the dots still not smooth like the original — our beads need a lot of improvement, make it very similar";
+"on Interactive Websites this is so dumb — put something that proves we build 3D, million-dollar branded websites".
+**Beads (compared side by side with emotion-agency.com frames):** theirs are small soft glossy beads, glowing where
+dense, white glitter, a few floaters, smooth settling; ours were opaque, depth-tested, hard-edged balls. Now
+(`figure.ts` + StudioCanvas): soft-edged bead sprite drawn partly additive (alpha × 0.7) with no depth test → dense
+parts glow toward pink-white; 14 % of beads twinkle (`uTime` sparkle); 0.6 % floaters hover near the surface; a soft
+"lit from within" core (`uCore`); palette leans violet / magenta / pink-lilac (+ a touch of brand blue; the logo keeps
+its own colours); damping 5 → 7 and slower swirl so forms settle without wobble; size 0.031 world (phones 0.038).
+**Interactive Websites:** the CSS "spatial web / depth study" mock-up (kept as the no-WebGL fallback) is replaced by
+`components/services/WebShowcase.tsx` + `components/three/WatchScene.tsx` (+ `watchConfig.ts`, shared data so the page
+doesn't pull three.js into its main bundle): a luxury watch modelled in code (lathe case + bezel with 60 marks, sunray
+dial with radial anisotropy + printed track, applied indices, extruded hands on the visitor's local time with a
+sweeping seconds hand, transmission crystal on capable devices, crown with a gem, lugs, tube strap, hidden movement
+with turning gears + swinging balance wheel, engraved case back), procedural studio light (drei Lightformers, no HDR).
+Configurator: case Steel / Gold / Ceramic, dial Midnight / Ivory / Emerald / Violet, strap Tan / Rubber / Lilac (eased
+material transitions), Explode (layers lift, three-quarter view, labels projected per frame), drag to turn with
+inertia (touch: horizontal only, vertical keeps scrolling), full screen (Esc), "Demo product · modelled & rendered live
+in your browser". Mounts after first interaction or 1.2 s, renders only in view; low tier / phones: no transmission,
+lower DPR.
+**Bug found + fixed:** `deviceTier()` ran during render on the server (Node 24 has `navigator`, not `window`) → the
+service page fell back to client rendering (React "script tag" warning). Guarded; only effects/client code call it.

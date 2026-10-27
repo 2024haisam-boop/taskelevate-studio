@@ -16,7 +16,7 @@ const SIM = `#version 300 es
 precision highp float;
 in vec2 vUv;
 uniform sampler2D uPos, uVel, uTarget, uFluid;
-uniform float uDt, uTime, uK, uDamp, uFlow, uSpread, uActive, uAspect, uWave, uBurst;
+uniform float uDt, uTime, uK, uDamp, uFlow, uSpread, uActive, uAspect, uWave, uKick, uFlash;
 uniform mat3 uRot;
 uniform vec3 uOffset, uScale;  // world pose of the shape
 uniform vec3 uCamR, uCamU;     // camera right / up in world space (pushes happen in the screen plane)
@@ -48,9 +48,7 @@ void main() {
   float rr = length(base.xz);
   base.y += sin(rr * 8.0 - uTime * 2.6) * 0.085 * max(0.0, 1.35 - rr) * uWave;
   vec3 rel = uRot * (base * uScale);
-  // burst: the form breathes out for a moment, then gathers again
   vec3 outward = normalize(rel + 1e-4);
-  rel += outward * uBurst * 0.18 * uScale.y;
   // spread: blow the form apart across the screen, each particle along its own line
   vec2 fc = vec2(c);
   float h = hash(fc);
@@ -59,6 +57,10 @@ void main() {
   vec2 blown = sc * uSpread * (1.5 + h * 3.5) + jitter * uSpread * (2.0 + h * 3.0) * uHalf.y;
   rel += uCamR * blown.x + uCamU * blown.y;
   vec3 tgt = uOffset + rel;
+  // a few floaters hover loosely around the form (a living edge, like dust in light)
+  float loose = step(hash(fc + 21.3), 0.006);
+  vec3 lr = normalize(vec3(hash(fc + 31.7), hash(fc + 33.9), hash(fc + 35.3)) - 0.5 + 1e-4);
+  tgt += (outward * 0.7 + lr * 0.6) * loose * (0.08 + 0.2 * hash(fc + 23.1)) * max(uScale.y, 0.3);
 
   // where am I on screen?
   vec4 clip = uViewProj * vec4(pos, 1.0);
@@ -76,18 +78,24 @@ void main() {
   float m = (1.0 - smoothstep(0.02, 0.2, l)) * uActive;
   vec2 away = d / max(l, 1e-4);
   vel += (uCamR * away.x + uCamU * away.y) * m * 4.0 * uDt * uHalf.y;
-  vel += outward * uBurst * 1.6 * uScale.y * uDt;
 
-  float k = uK * (1.0 - 0.82 * scatter);
+  // burst (on a change of shape, and now and then): the form flashes and a spray of its outer particles shoots out
+  // like sparks — one kick, the spring eased off for a moment, then they are pulled home
+  float rim = smoothstep(0.6, 1.1, length(base));
+  float spray = step(hash(fc + 3.7), 0.015 + 0.04 * rim);
+  vec3 rnd = normalize(vec3(hash(fc + 11.1), hash(fc + 12.7), hash(fc + 14.3)) - 0.5 + 1e-4);
+  vel += normalize(outward * 0.8 + rnd * 0.6) * (2.0 + 3.5 * hash(fc + 5.9)) * max(uScale.y, 0.3) * uKick * spray;
+
+  float k = uK * (1.0 - 0.82 * scatter) * mix(1.0, 0.16, loose);
   vel += (tgt - pos) * k * uDt;
-  vel += swirl(pos * 1.4 / max(uScale.y, 0.3), uTime * 0.7) * uFlow * max(uScale.y, 0.3) * (1.0 + 2.0 * uSpread) * uDt;
+  vel += swirl(pos * 1.4 / max(uScale.y, 0.3), uTime * 0.5) * uFlow * max(uScale.y, 0.3) * (1.0 + 2.0 * uSpread + 1.5 * loose) * uDt;
   vel *= exp(-uDamp * uDt);
   float sp = length(vel);
   vel *= min(1.0, 12.0 / max(sp, 1e-4));
   pos += vel * uDt;
 
-  scatter = max(scatter - uDt * 1.8, clamp(fs * 0.22 + m * 0.3, 0.0, 1.0));
-  float g = clamp(sp * 0.2 + scatter * 0.75 + uBurst * 0.5, 0.0, 1.0);
+  scatter = max(max(scatter - uDt * 1.8, clamp(fs * 0.22 + m * 0.3, 0.0, 1.0)), uKick * spray * 0.6);
+  float g = clamp(sp * 0.2 + scatter * 0.75 + uFlash * (0.75 + 0.25 * h), 0.0, 1.0);
   glow += (g - glow) * min(1.0, uDt * (g > glow ? 14.0 : 2.5));
 
   oPos = vec4(pos, glow);
@@ -100,15 +108,20 @@ in vec3 aTint;  // the logo's own colour at this particle's spot
 uniform sampler2D uPos;
 uniform int uW;
 uniform mat4 uViewProj;
-uniform float uPx, uKeep, uTint, uMaxPx;
+uniform float uPx, uKeep, uTint, uMaxPx, uTime;
+uniform vec4 uCore; // the form's centre (world) + radius: a soft light inside it
 uniform vec3 uEye;
 out vec3 vColor;
 out float vGlow;
 out float vVis;
+out float vSpark;
 void main() {
   // uKeep < 1 thins the cloud (ambient dust): particles above the threshold fade out
   float h = fract(sin(float(gl_VertexID) * 12.9898) * 43758.5453);
   vVis = 1.0 - smoothstep(uKeep - 0.03, uKeep + 0.03, h);
+  // glitter: one particle in seven catches the light now and then
+  float sh = fract(sin(float(gl_VertexID) * 78.233) * 43758.5453);
+  vSpark = sh < 0.14 ? pow(max(0.0, sin(uTime * (1.2 + sh * 14.0) + sh * 90.0)), 28.0) : 0.0;
   if (vVis < 0.004) {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     gl_PointSize = 0.0;
@@ -117,8 +130,11 @@ void main() {
   vec4 P = texelFetch(uPos, ivec2(gl_VertexID % uW, gl_VertexID / uW), 0);
   gl_Position = uViewProj * vec4(P.xyz, 1.0);
   float depth = max(0.2, length(P.xyz - uEye));
-  gl_PointSize = clamp(uPx * (0.7 + aColor.w * 0.6) * (1.0 + P.w * 0.5) / depth, 1.0, uMaxPx);
+  gl_PointSize = clamp(uPx * (0.7 + aColor.w * 0.6) * (1.0 + P.w * 0.22) / depth, 1.0, uMaxPx);
   vColor = mix(aColor.rgb, aTint, uTint);
+  // lit from within: beads near the centre of the form glow toward pink-white
+  float core = exp(-pow(length(P.xyz - uCore.xyz) / max(uCore.w, 1e-3), 2.0) * 2.2);
+  vColor = mix(vColor, vec3(1.0, 0.84, 0.97), core * 0.38);
   vGlow = P.w;
 }`;
 
@@ -127,30 +143,37 @@ precision mediump float;
 in vec3 vColor;
 in float vGlow;
 in float vVis;
+in float vSpark;
 uniform float uAlpha;
 out vec4 outColor;
+// a small glossy bead with a soft edge; drawn partly additive, so where the form is dense it glows toward pink-white
+// (the luminous glitter look) instead of stacking opaque balls
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(c, c);
   if (r2 > 1.0) discard;
+  float r = sqrt(r2);
   vec3 n = vec3(c.x, -c.y, sqrt(1.0 - r2));
   vec3 L = normalize(vec3(-0.45, 0.7, 0.6));
   float diff = max(dot(n, L), 0.0);
-  float spec = pow(max(dot(n, normalize(L + vec3(0.0, 0.0, 1.0))), 0.0), 36.0);
+  float spec = pow(max(dot(n, normalize(L + vec3(0.0, 0.0, 1.0))), 0.0), 40.0);
   float rim = pow(1.0 - n.z, 2.0);
-  vec3 col = vColor * (0.48 + 0.7 * diff) + vec3(0.45, 0.62, 1.0) * rim * 0.4 + vec3(spec * 0.7);
-  col = mix(col, vec3(0.95, 0.96, 1.0), vGlow * 0.6);
-  float a = (1.0 - smoothstep(0.78, 1.0, r2)) * uAlpha * vVis;
-  outColor = vec4(col * a, a);
+  vec3 col = vColor * (0.6 + 0.55 * diff) + vec3(0.6, 0.55, 1.0) * rim * 0.28 + vec3(spec * 0.65);
+  // glow → a pink-white flash that keeps the shading (lifted, not flattened)
+  col = mix(col, vec3(1.0, 0.86, 0.98), vGlow * 0.55) + vec3(0.3, 0.16, 0.26) * vGlow * (0.5 + 0.5 * diff);
+  col += vec3(1.0, 0.96, 1.0) * vSpark * (1.0 - r) * 1.8;
+  float a = (1.0 - smoothstep(0.42, 1.0, r)) * uAlpha * vVis;
+  outColor = vec4(col * a, a * 0.7);
 }`;
 
 const PALETTE: [number, number, number, number][] = [
-  // r, g, b, weight — brand violet → blue, with lilac and a little white
-  [0.53, 0.33, 0.91, 0.34],
-  [0.49, 0.23, 0.93, 0.2],
-  [0.69, 0.55, 0.96, 0.16],
-  [0.09, 0.61, 0.91, 0.18],
-  [0.95, 0.94, 1.0, 0.12],
+  // r, g, b, weight — violet, magenta and pink-lilac glitter, a touch of brand blue, a little white
+  [0.55, 0.3, 0.93, 0.3],
+  [0.71, 0.3, 0.9, 0.22],
+  [0.84, 0.58, 0.98, 0.2],
+  [0.42, 0.2, 0.86, 0.1],
+  [0.2, 0.55, 0.95, 0.07],
+  [0.97, 0.93, 1.0, 0.11],
 ];
 
 // ---------------------------------------------------------------- shapes, ~unit radius, centred
@@ -305,7 +328,8 @@ export interface FigureStep {
   time: number;
   kMul: number;
   spread: number;
-  burst: number; // 0..1 envelope
+  kick: number; // 1 on the step a burst starts (the spray), else 0
+  flash: number; // 0..1, the burst's light
   wave: number; // 0..1, animate the wave sheet
   camR: [number, number, number];
   camU: [number, number, number];
@@ -351,8 +375,8 @@ export class Figure {
     if (!sim || !draw) throw new Error("figure shader");
     this.sim = sim;
     this.draw = draw;
-    this.us = locations(gl, sim, ["uPos", "uVel", "uTarget", "uFluid", "uDt", "uTime", "uK", "uDamp", "uFlow", "uSpread", "uActive", "uAspect", "uWave", "uBurst", "uRot", "uOffset", "uScale", "uCamR", "uCamU", "uHalf", "uFluidToNdc", "uViewProj", "uMouse"] as const);
-    this.ud = locations(gl, draw, ["uPos", "uW", "uViewProj", "uPx", "uKeep", "uTint", "uMaxPx", "uEye", "uAlpha"] as const);
+    this.us = locations(gl, sim, ["uPos", "uVel", "uTarget", "uFluid", "uDt", "uTime", "uK", "uDamp", "uFlow", "uSpread", "uActive", "uAspect", "uWave", "uKick", "uFlash", "uRot", "uOffset", "uScale", "uCamR", "uCamU", "uHalf", "uFluidToNdc", "uViewProj", "uMouse"] as const);
+    this.ud = locations(gl, draw, ["uPos", "uW", "uViewProj", "uPx", "uKeep", "uTint", "uMaxPx", "uEye", "uAlpha", "uTime", "uCore"] as const);
 
     const N = this.count, r = rng(11);
     // start as a loose swarm far behind, so the first thing you see is it gathering
@@ -455,11 +479,12 @@ export class Figure {
     gl.uniform1f(u.uDt, s.dt);
     gl.uniform1f(u.uTime, s.time);
     gl.uniform1f(u.uK, 38 * s.kMul);
-    gl.uniform1f(u.uDamp, 5);
+    gl.uniform1f(u.uDamp, 7); // near-critical: forms settle smoothly instead of wobbling
     gl.uniform1f(u.uFlow, 1.1);
     gl.uniform1f(u.uSpread, s.spread);
     gl.uniform1f(u.uWave, s.wave);
-    gl.uniform1f(u.uBurst, s.burst);
+    gl.uniform1f(u.uKick, s.kick);
+    gl.uniform1f(u.uFlash, s.flash);
     gl.uniform3f(u.uCamR, ...s.camR);
     gl.uniform3f(u.uCamU, ...s.camU);
     gl.uniform1f(u.uActive, s.active);
@@ -487,7 +512,7 @@ export class Figure {
   }
 
   /** keep: fraction of particles drawn (1 = all; ambient dust thins it out); tint: 0..1 toward the logo colours */
-  render(viewProj: Float32Array, eye: [number, number, number], px: number, alpha: number, keep = 1, tint = 0, maxPx = 40) {
+  render(viewProj: Float32Array, eye: [number, number, number], px: number, alpha: number, keep = 1, tint = 0, maxPx = 40, time = 0, core: [number, number, number, number] = [0, 0, 0, 0]) {
     const gl = this.gl, u = this.ud;
     gl.useProgram(this.draw);
     gl.activeTexture(gl.TEXTURE0);
@@ -501,6 +526,8 @@ export class Figure {
     gl.uniform1f(u.uMaxPx, maxPx);
     gl.uniform1f(u.uAlpha, alpha);
     gl.uniform1f(u.uKeep, keep);
+    gl.uniform1f(u.uTime, time);
+    gl.uniform4f(u.uCore, ...core);
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.POINTS, 0, this.count);
     gl.bindVertexArray(null);

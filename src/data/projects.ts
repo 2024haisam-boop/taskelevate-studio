@@ -84,6 +84,8 @@ export interface Project {
   process?: ProjectStep[];
   /** Only real, verifiable results. Never estimate. */
   outcome?: string;
+  /** A film library shown on the case-study page (see src/data/saas-films.ts). */
+  films?: "saas";
 }
 
 /** Real footage, encoded by scripts/encode-work.sh into /public/media/work/<slug>/ (preview loop, poster, full cut). */
@@ -98,6 +100,19 @@ function workMedia(slug: string, width: number, height: number, alt: string): Pi
 
 // Write-ups describe what each film shows. Client names, tools and results are added only when confirmed.
 export const projects: Project[] = [
+  {
+    slug: "saas-animation-films",
+    title: "SaaS Animation — Selected Films",
+    category: "saas-animation",
+    featured: true,
+    art: "saas-flow",
+    ...workMedia("saas-animation-films", 1280, 720, "SaaS animation reel — product interfaces in motion across launch films and teasers"),
+    description: "Twenty-five product films — launch films, explainers, teasers and vertical spots for AI, fintech and software products.",
+    overview:
+      "A library of the studio's SaaS animation: product interfaces rebuilt as motion, launch films and explainers that walk through a workflow, short teasers and vertical spots for social. Concept pieces built around well-known brands are marked as concepts.",
+    services: ["Launch films", "Explainers", "UI animation", "Vertical spots"],
+    films: "saas",
+  },
   {
     slug: "saas-launch-explainer",
     title: "SaaS Launch Explainer",

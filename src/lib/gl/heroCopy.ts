@@ -1,4 +1,5 @@
 import { FULLSCREEN_VERT, locations, program } from "./core";
+import { deviceTier } from "../device";
 
 /* THE HERO COPY ON THE GPU. The hero's copy blocks warp in and out — a liquid displacement, a colour split and a
    blur. Done with an SVG filter on live text, that means re-rendering big type through a CPU filter every frame
@@ -174,6 +175,8 @@ export class HeroCopyGL {
   private probe: CanvasRenderingContext2D;
   private drew = false;
   private warmed = false;
+  /** the GPU dropped the context (low memory): the caller falls back to the DOM copy */
+  lost = false;
   paper: [number, number, number] = [0.965, 0.953, 0.996];
 
   constructor(private canvas: HTMLCanvasElement, count: number) {
@@ -191,6 +194,10 @@ export class HeroCopyGL {
     this.bu = locations(gl, blurProg, ["uQuad", "uView", "uTx", "uSrc", "uSize", "uFit", "uBlur", "uLod", "uAlpha"] as const);
     this.hu = locations(gl, haloProg, ["uView", "uCenter", "uHole", "uPaper"] as const);
     this.snaps = Array.from({ length: count }, () => null);
+    canvas.addEventListener("webglcontextlost", () => {
+      this.lost = true;
+      this.canvas.style.visibility = "hidden";
+    });
   }
 
   /** CSS colour → premultiplied RGBA 0..1 (any syntax the browser understands) */
@@ -206,7 +213,8 @@ export class HeroCopyGL {
   }
 
   resize(w: number, h: number) {
-    this.S = Math.min(window.devicePixelRatio || 1, 2);
+    // the texture only plays transitions (the DOM copy is shown at rest): weak devices use fewer pixels for it
+    this.S = Math.min(window.devicePixelRatio || 1, deviceTier() === "low" ? 1.25 : 2);
     this.W = Math.max(1, w);
     this.H = Math.max(1, h);
     this.canvas.width = Math.round(this.W * this.S);
@@ -221,6 +229,15 @@ export class HeroCopyGL {
   stale(i?: number) {
     if (i === undefined) this.snaps.forEach((s) => s && (s.fresh = false));
     else if (this.snaps[i]) this.snaps[i]!.fresh = false;
+  }
+  /** Free every snapshot except `ids` (weak devices keep only the blocks around the current one). */
+  keep(ids: number[]) {
+    this.snaps.forEach((s, i) => {
+      if (!s || ids.includes(i)) return;
+      this.gl.deleteTexture(s.tex);
+      this.gl.deleteTexture(s.shadow);
+      this.snaps[i] = null;
+    });
   }
   letters(i: number) {
     if (this.snaps[i]) this.snaps[i]!.letters = true;

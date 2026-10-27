@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { decodeTo, prepareDecode } from "@/lib/animations/decode";
 import { HeroCopyGL, type CopyDraw } from "@/lib/gl/heroCopy";
+import { deviceTier } from "@/lib/device";
 
 type Pos = "bottom" | "left" | "right";
 
@@ -25,7 +26,7 @@ const SHIFT: Record<Pos, number> = { bottom: 0, left: 0.42, right: -0.42 };
 const HOLD_KEYS = [" ", "ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"];
 const STEP_MS = 1250; // one section: the warp out, the warp in, the camera settling
 const WHEEL_GAP = 220; // ms without wheel events that ends a gesture (trackpad momentum keeps one going)
-const SWIPE_PX = 24;
+const SWIPE_PX = 14;
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -108,19 +109,28 @@ export function HeroStory() {
       else el.style[prop as "opacity"] = value;
     };
 
-    // ---- the copy on the GPU
+    // ---- the copy on the GPU — set up just after the intro (it is first needed at the first section change), so
+    // its shader compiles never compete with loading on slow phones
     let copy: HeroCopyGL | null = null;
-    if (motion.matches) {
+    let copyTried = false;
+    const makeCopy = () => {
+      if (copyTried || !motion.matches) return;
+      copyTried = true;
       try {
         copy = new HeroCopyGL(glCanvas, PHASES.length);
       } catch {
         copy = null;
+        return;
       }
-      // the sentences as decode letters from the start, so they never move (the GPU copy draws them letter by letter)
-      sentences.forEach((s, i) => s && prepareDecode(s, PHASES[i]!.sentence));
-    }
+      copy.resize(stageW, stageH);
+      const bg = getComputedStyle(html).getPropertyValue("--color-bg").trim();
+      if (bg) copy.paper = copy.rgba(bg).slice(0, 3) as [number, number, number];
+      sentences.forEach((s) => s && mo.observe(s, { attributes: true, attributeFilter: ["class", "data-g"], subtree: true }));
+    };
+    // the sentences as decode letters from the start, so they never move (the GPU copy draws them letter by letter)
+    if (motion.matches) sentences.forEach((s, i) => s && prepareDecode(s, PHASES[i]!.sentence));
     let fontsReady = false;
-    const gpu = () => Boolean(copy && fontsReady && html.dataset.studio === "on");
+    const gpu = () => Boolean(copy && !copy.lost && fontsReady && html.dataset.studio === "on");
     const domTx = PHASES.map(() => 0); // each block's slide as last written to the DOM, px
     const onGpu = PHASES.map(() => false);
 
@@ -142,11 +152,12 @@ export function HeroStory() {
     let prefetchT = 0;
     const runPrefetch = () => {
       prefetchT = 0;
-      if (!copy || !gpu()) return;
       if (html.classList.contains("preloading")) {
         prefetchT = window.setTimeout(runPrefetch, 300);
         return;
       }
+      makeCopy();
+      if (!copy || !gpu()) return;
       const i = queue.shift();
       if (i !== undefined && !copy.fresh(i)) copy.snap(i, blocks[i]!, domTx[i]!);
       else copy.warm();
@@ -186,6 +197,11 @@ export function HeroStory() {
           auto = null;
           holdOff();
           lastY = window.scrollY;
+          if (queued) {
+            const d = queued;
+            queued = 0;
+            go(d);
+          }
         }
       };
       cancelAnimationFrame(autoRaf);
@@ -225,26 +241,47 @@ export function HeroStory() {
       glide(docTop + to * span(), STEP_MS * Math.min(1.35, Math.max(1, Math.sqrt(Math.abs(dist) / len))), stepCurve(a, b));
     };
 
-    let wheelAt = 0, wheelSum = 0, wheelSpent = false, wheelOn = false;
+    // A gesture that arrives while a section is still gliding isn't lost: it is queued and plays as soon as the
+    // glide lands (one at a time — the latest wins).
+    let queued: 1 | -1 | 0 = 0;
+    const ask = (dir: 1 | -1) => {
+      if (auto) queued = dir;
+      else go(dir);
+    };
+
+    // Wheel / trackpad. One gesture = everything until a pause — or, on top of a dying momentum tail, a real new
+    // flick (the event rate jumping well above the fading tail, once the gesture is past its own acceleration).
+    // Rates, not raw deltas, so coalesced events from a busy frame don't look like a new flick.
+    let wheelAt = 0, wheelSum = 0, wheelSpent = false, wheelOn = false, gStart = 0, gPeak = 0, tail = 0, gSign = 0;
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) return; // a pinch-zoom
       // input time, not handling time: a busy frame mustn't look like a pause and split one gesture in two
       const now = e.timeStamp || performance.now();
-      if (now - wheelAt > WHEEL_GAP) {
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1);
+      const gap = now - wheelAt;
+      const rate = Math.abs(dy) / Math.min(120, Math.max(8, gap));
+      const flick = now - gStart > 300 && tail < gPeak * 0.5 && rate > tail * 2.5 && Math.abs(dy) > 14;
+      const turn = gSign !== 0 && Math.sign(dy) !== gSign && Math.abs(dy) > 6;
+      if (gap > WHEEL_GAP || flick || turn) {
         wheelSum = 0;
         wheelSpent = false;
+        gStart = now;
+        gPeak = 0;
+        tail = rate;
       }
       wheelAt = now;
+      gPeak = Math.max(gPeak, rate);
+      tail = tail * 0.6 + rate * 0.4;
+      if (dy !== 0) gSign = Math.sign(dy);
       // a gesture that already moved the page is spent to its end — even once the fly-through has landed below
       if (!auto && !wheelSpent && !stepping()) return;
       e.preventDefault();
-      if (auto || wheelSpent) return;
-      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1);
+      if (wheelSpent) return;
       if (Math.abs(e.deltaX) > Math.abs(dy)) return;
       wheelSum += dy;
       if (Math.abs(wheelSum) >= 12) {
         wheelSpent = true;
-        go(wheelSum > 0 ? 1 : -1);
+        ask(wheelSum > 0 ? 1 : -1);
       }
     };
     function wheel(on: boolean) {
@@ -254,37 +291,44 @@ export function HeroStory() {
       else window.removeEventListener("wheel", onWheel);
     }
 
-    let touchY0 = 0, touchY = 0, touching = false;
+    // Touch: a swipe anywhere on screen (the hero, or the header over it) — not in the open menu sheet. Short quick
+    // flicks count too.
+    let touchY0 = 0, touchY = 0, touchT = 0, touching = false, onControl = false;
     const onTouchStart = (e: TouchEvent) => {
-      // only touches that start on the hero itself (elsewhere — the menu button, a toast — the page pans natively)
-      touching = e.touches.length === 1 && !auto && stepping() && stage.contains(e.target as Node);
-      if (touching) touchY0 = touchY = e.touches[0]!.clientY;
+      const t = e.target instanceof Element ? e.target : null;
+      touching = e.touches.length === 1 && stepping() && !t?.closest("#site-menu, input, textarea, select");
+      onControl = Boolean(t?.closest("a, button")); // a tap on the menu button must stay a tap
+      if (touching) {
+        touchY0 = touchY = e.touches[0]!.clientY;
+        touchT = e.timeStamp;
+      }
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length > 1) touching = false;
       else if (touching && e.touches[0]) touchY = e.touches[0].clientY;
     };
-    const onTouchEnd = () => {
+    const onTouchEnd = (e: TouchEvent) => {
       if (!touching) return;
       touching = false;
-      const d = touchY0 - touchY;
-      if (Math.abs(d) >= SWIPE_PX) go(d > 0 ? 1 : -1);
+      const end = e.changedTouches[0]?.clientY ?? touchY; // the lift point (tiny moves may never reach touchmove)
+      const d = touchY0 - end, quick = e.timeStamp - touchT < 180;
+      if (Math.abs(d) >= (onControl ? 24 : SWIPE_PX) || (!onControl && quick && Math.abs(d) >= 8)) ask(d > 0 ? 1 : -1);
     };
 
     const onKey = (e: KeyboardEvent) => {
-      if (auto) {
-        if (HOLD_KEYS.includes(e.key)) e.preventDefault();
-        return;
-      }
-      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !stepping()) return;
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (!auto && !stepping()) return;
       const el = e.target instanceof Element ? e.target : null;
       if (el?.closest("input, textarea, select, [contenteditable]")) return;
       if (e.key === " " && el?.closest("button, a, summary")) return;
       const down = e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey);
       const up = e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey);
-      if (!down && !up) return;
+      if (!down && !up) {
+        if (auto && HOLD_KEYS.includes(e.key)) e.preventDefault();
+        return;
+      }
       e.preventDefault();
-      if (!e.repeat) go(down ? 1 : -1);
+      if (!e.repeat) ask(down ? 1 : -1);
     };
 
     let settleT = 0;
@@ -310,6 +354,8 @@ export function HeroStory() {
       const trackTop = top + y, landing = trackTop + trackH;
       docTop = trackTop;
       wheel(Boolean(auto) || y < landing - 1 || performance.now() - wheelAt < WHEEL_GAP);
+      const inSteps = (y - trackTop) / total <= ZOOM_FROM + 0.004 ? "on" : "off";
+      if (html.dataset.heroSteps !== inSteps) html.dataset.heroSteps = inSteps;
       // moved by something other than a step (scrollbar, find-in-page…): settle on a section once it stops
       if (!auto && dir !== 0 && (y - trackTop) / total <= ZOOM_FROM + 0.004) {
         window.clearTimeout(settleT);
@@ -348,6 +394,7 @@ export function HeroStory() {
           copy?.letters(now);
         }
         count.textContent = `${String(now + 1).padStart(2, "0")} / ${String(PHASES.length).padStart(2, "0")}`;
+        if (deviceTier() === "low") copy?.keep([now - 1, now, now + 1]); // weak devices: only the blocks around this one
         prefetch(now - 1, now + 1);
       }
 
@@ -431,7 +478,6 @@ export function HeroStory() {
         if (onGpu[i]) kick();
       }
     });
-    if (copy) sentences.forEach((s) => s && mo.observe(s, { attributes: true, attributeFilter: ["class", "data-g"], subtree: true }));
 
     const onStudio = () => {
       prefetch(active, active + 1, active - 1);
@@ -441,9 +487,7 @@ export function HeroStory() {
       copy?.stale();
       onStudio();
     };
-    if (copy) {
-      const bg = getComputedStyle(html).getPropertyValue("--color-bg").trim();
-      if (bg) copy.paper = copy.rgba(bg).slice(0, 3) as [number, number, number];
+    if (motion.matches) {
       document.fonts.ready.then(() => {
         if (disposed) return;
         fontsReady = true;
@@ -475,6 +519,7 @@ export function HeroStory() {
       wheel(false);
       window.clearTimeout(settleT);
       delete track.dataset.steps;
+      delete html.dataset.heroSteps;
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);

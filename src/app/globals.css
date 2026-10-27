@@ -903,7 +903,8 @@
     }
     /* one section per gesture (HeroStory): no native panning inside the hero on touch — a swipe is one step
        (pinch-zoom stays; "none" first for browsers without the pinch-zoom value) */
-    .hero-track[data-steps="on"] .hero-stage {
+    .hero-track[data-steps="on"] .hero-stage,
+    html[data-hero-steps="on"] [data-site-nav] {
       touch-action: none;
       touch-action: pinch-zoom;
     }
@@ -1068,8 +1069,11 @@
   }
 
   /* frosted glass over the studio layer: the liquid and the figure show through */
+  /* the header (Navbar): laptops and up — the menu pill turns glass as soon as the page scrolls; phones — logo and
+     menu button stay clear through the home hero and the glass comes in once you are inside the studio
+     (`data-solid`; on other pages it follows the scroll the same way) */
   .glass-clear,
-  .nav-group[data-scrolled="true"] {
+  .nav-group[data-glass="true"] {
     background: rgb(255 255 255 / 0.46);
     -webkit-backdrop-filter: blur(18px) saturate(1.8);
     backdrop-filter: blur(18px) saturate(1.8);
@@ -1631,6 +1635,274 @@
   }
   to {
     clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ---- WEB SHOWCASE (components/services/WebShowcase): the live 3D configurator on the Interactive Websites page ---- */
+@layer components {
+  .web-showcase {
+    cursor: grab;
+  }
+  .web-showcase:active {
+    cursor: grabbing;
+  }
+  .web-showcase-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(55% 50% at 50% 44%, rgb(139 92 246 / 0.3), transparent 70%),
+      radial-gradient(40% 30% at 50% 88%, rgb(56 189 248 / 0.1), transparent 70%);
+  }
+  .web-showcase-skeleton {
+    position: absolute;
+    left: 50%;
+    top: 44%;
+    width: min(38%, 220px);
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    transform: translate(-50%, -50%);
+    animation: web-pulse 1.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes web-pulse {
+    50% {
+      transform: translate(-50%, -50%) scale(1.06);
+      border-color: rgb(196 181 253 / 0.4);
+    }
+  }
+  .web-showcase-hint {
+    padding: 0.4rem 0.7rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.08);
+    color: var(--color-fg-2);
+    font-size: 0.68rem;
+    transition: opacity 0.5s;
+    pointer-events: none;
+  }
+  .web-showcase-btn {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.1);
+    color: #fff;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+  }
+  .web-showcase-btn:hover,
+  .web-showcase-btn:focus-visible {
+    background: rgb(255 255 255 / 0.2);
+  }
+  .web-showcase-controls {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 34px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 10px 16px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgb(12 9 26 / 0.58);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    cursor: default;
+  }
+  @media (min-width: 64rem) {
+    .web-showcase-controls {
+      left: 50%;
+      right: auto;
+      bottom: 40px;
+      transform: translateX(-50%);
+      gap: 12px 22px;
+      padding: 12px 18px;
+    }
+  }
+  .web-showcase-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .web-showcase-group > .label-mono {
+    font-size: 0.62rem;
+    color: var(--color-fg-3);
+  }
+  .web-showcase-swatch {
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 9999px;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.28),
+      0 4px 10px -4px rgb(0 0 0 / 0.6);
+    transition: transform 0.2s;
+  }
+  .web-showcase-swatch:hover {
+    transform: scale(1.08);
+  }
+  .web-showcase-swatch[aria-checked="true"] {
+    outline: 2px solid #c4b5fd;
+    outline-offset: 2px;
+  }
+  .web-showcase-explode {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.25rem;
+    padding: 0 0.95rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    box-shadow: 0 8px 22px -10px rgb(139 92 246 / 0.9);
+  }
+  .web-showcase-explode[aria-pressed="true"] {
+    background: rgb(255 255 255 / 0.14);
+    box-shadow: none;
+  }
+  .web-showcase-note {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 11px;
+    text-align: center;
+    font-size: 0.6rem;
+    color: var(--color-fg-3);
+    pointer-events: none;
+  }
+  .watch-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+    padding: 0.3rem 0.55rem;
+    border-radius: 9999px;
+    background: rgb(14 10 30 / 0.72);
+    border: 1px solid rgb(196 181 253 / 0.35);
+    color: #f1ecff;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    transition: opacity 0.2s;
+  }
+  /* (the scene sets the transform to the anchor point; the label sits beside it via margins) */
+  .watch-label[data-side="right"] {
+    margin-left: 14px;
+    margin-top: -0.7rem;
+  }
+  .watch-label[data-side="left"] {
+    margin-top: -0.7rem;
+    translate: calc(-100% - 14px) 0;
+  }
+}
+
+/* ---- FILM WALL (components/work/FilmWall): mixed-shape films in columns + a player dialog ---- */
+@layer components {
+  .film-wall {
+    columns: 1;
+    column-gap: 1.5rem;
+  }
+  @media (min-width: 40rem) {
+    .film-wall {
+      columns: 2;
+    }
+  }
+  @media (min-width: 64rem) {
+    .film-wall {
+      columns: 3;
+    }
+  }
+  .film-card {
+    break-inside: avoid;
+    margin-bottom: clamp(28px, 3vw, 44px);
+  }
+  .film-play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.9);
+    color: var(--color-fg);
+    box-shadow: 0 10px 30px -10px rgb(30 10 70 / 0.5);
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+    transition:
+      opacity 0.3s,
+      transform 0.4s var(--ease-out-expo);
+  }
+  .group:hover .film-play,
+  .group:focus-visible .film-play {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  @media (hover: none) {
+    .film-play {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(0.85);
+    }
+  }
+  .film-dialog {
+    max-width: none;
+    max-height: none;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    border: 0;
+    background: transparent;
+    display: none;
+    place-items: center;
+  }
+  .film-dialog[open] {
+    display: grid;
+  }
+  .film-dialog::backdrop {
+    background: rgb(10 6 22 / 0.86);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  .film-dialog-inner {
+    width: fit-content;
+    max-width: min(1100px, 100%);
+  }
+  .film-dialog-video {
+    display: block;
+    aspect-ratio: var(--ar, 16 / 9);
+    height: min(76svh, calc((min(100vw, 1100px) - 32px) / var(--ar, 1.7778)));
+    width: auto;
+    max-width: 100%;
+    margin-inline: auto;
+    border-radius: var(--radius-card);
+    background: #000;
+  }
+  .film-dialog-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.12);
+    color: #fff;
+    font-size: 1.05rem;
+    transition: background-color 0.2s;
+  }
+  .film-dialog-btn:hover,
+  .film-dialog-btn:focus-visible {
+    background: rgb(255 255 255 / 0.24);
   }
 }
 

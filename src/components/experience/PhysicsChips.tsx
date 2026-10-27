@@ -41,11 +41,26 @@ export function PhysicsChips({ className }: { className?: string }) {
 
     let cleanup: (() => void) | undefined;
     let cancelled = false;
+    // fetch + parse the physics library in a spare moment while the chips are still a screen or so away, so
+    // starting it on arrival is only the set-up
+    const fetchLib = () => import("matter-js");
+    let lib: ReturnType<typeof fetchLib> | null = null;
+    const load = () => (lib ??= fetchLib());
+    const pre = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        pre.disconnect();
+        if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(() => void load(), { timeout: 1500 });
+        else window.setTimeout(() => void load(), 200);
+      },
+      { rootMargin: "150% 0px" },
+    );
+    pre.observe(box);
     const io = new IntersectionObserver(
       async ([entry]) => {
         if (!entry?.isIntersecting) return;
         io.disconnect();
-        const Matter = (await import("matter-js")).default;
+        const Matter = (await load()).default;
         if (cancelled) return;
         cleanup = startPhysics(Matter, box);
         setPhysics(true);
@@ -55,6 +70,7 @@ export function PhysicsChips({ className }: { className?: string }) {
     io.observe(box);
     return () => {
       cancelled = true;
+      pre.disconnect();
       io.disconnect();
       cleanup?.();
     };

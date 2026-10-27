@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { FULLSCREEN_VERT, floatFormats, locations, program, smooth } from "@/lib/gl/core";
 import { Figure, SHAPES, sampleMark, type ShapeName } from "@/lib/gl/figure";
 import { Fluid } from "@/lib/gl/fluid";
+import { deviceTier, demoteTier, weakGpu } from "@/lib/device";
 
 /* THE STUDIO LAYER — one WebGL2 canvas under the whole page (sticky inside the page sheet, so it never covers the
    footer curtain). It runs:
@@ -17,7 +18,8 @@ import { Fluid } from "@/lib/gl/fluid";
        ("yaw,pitch,dist,shiftX,shiftY": a drone camera orbiting the figure, which then sits at the screen point
        given by the shift). data-figure="dust" spreads it thin across the screen; "none" or no anchor → it fades;
      · the composite: landscape + ink + refracted figure + rippling reflection.
-   Every few seconds a settled figure breathes out in a soft burst. Sets html[data-studio="on"|"off"] (off: reduced
+   It bursts — a flash and a spray of sparks from its edge, pulled home again — whenever it changes shape and every
+   few seconds while it rests. Sets html[data-studio="on"|"off"] (off: reduced
    motion, no WebGL2 / float targets) and fires "studio:state". */
 
 const FOV = (35 * Math.PI) / 180;
@@ -257,12 +259,18 @@ export function StudioCanvas() {
 
     const small = Math.min(window.innerWidth, window.innerHeight) < 640;
     const wide = window.innerWidth >= 1024;
+    // weak devices (low memory, entry-level GPU): the same layer with fewer particles, a coarser fluid and fewer
+    // pixels — adaptive resolution then fine-tunes from there
+    if (weakGpu(gl)) demoteTier();
+    const low = deviceTier() === "low";
     let fluid: Fluid, figure: Figure;
     const comp = program(gl, FULLSCREEN_VERT, COMPOSITE);
     try {
       if (!comp) throw new Error("composite");
-      fluid = new Fluid(gl, formats.half, { simShort: small ? 96 : 128, dyeShort: small ? 320 : 540 });
-      figure = new Figure(gl, formats.full, wide ? 256 : window.innerWidth >= 640 ? 192 : 128);
+      fluid = low
+        ? new Fluid(gl, formats.half, { simShort: 64, dyeShort: small ? 224 : 320, iterations: 10 })
+        : new Fluid(gl, formats.half, { simShort: small ? 96 : 128, dyeShort: small ? 320 : 540 });
+      figure = new Figure(gl, formats.full, low ? (small ? 96 : 128) : wide ? 256 : window.innerWidth >= 640 ? 192 : 128);
     } catch {
       return announce("off");
     }
@@ -304,7 +312,7 @@ export function StudioCanvas() {
     const cam: Cam = { ...REST };
     let yaw = 0, clock = 0, last = performance.now(), raf = 0, running = false, quietFor = 0, inkHue = 0;
     let introDone = !html.classList.contains("preloading");
-    let burstAt = performance.now() + 2600, burstStart = -1e9;
+    let burstAt = performance.now() + 2600, burstStart = -1e9, kickPending = false;
     // adaptive resolution: `refresh` tracks the display's frame interval (60/120/144 Hz), `fastFor`/`slowFor` how long
     // frames have kept up with it; `ceiling` stops it climbing back to a level it could not hold
     let frameAvg = 1 / 60, slowFor = 0, fastFor = 0, refresh = 1 / 60, ceiling = 1, raisedAt = -1e9, settleAt = 0, hadCam = false;
@@ -317,7 +325,7 @@ export function StudioCanvas() {
     let W = 1, H = 1, aspect = 1, hw = hh;
     let quality = 1; // drops when frames run slow (adaptive resolution)
     const resize = () => {
-      const dpr = Math.max(0.75, Math.min(window.devicePixelRatio || 1, small ? 1.5 : 1.75) * quality);
+      const dpr = Math.max(low ? 0.6 : 0.75, Math.min(window.devicePixelRatio || 1, low ? (small ? 1 : 1.25) : small ? 1.5 : 1.75) * quality);
       const w = Math.max(1, boxEl.clientWidth), h = Math.max(1, boxEl.clientHeight);
       W = Math.round(w * dpr);
       H = Math.round(h * dpr);
@@ -445,7 +453,7 @@ export function StudioCanvas() {
       if (introDone && now > settleAt) {
         slowFor = frameAvg > Math.max(refresh * 1.22, 1 / 75) ? slowFor + dt : 0;
         fastFor = frameAvg < refresh * 1.06 ? fastFor + dt : 0;
-        if (slowFor > 1.5 && quality > 0.55) {
+        if (slowFor > 1.5 && quality > (low ? 0.6 : 0.55)) {
           if (now - raisedAt < 5000) ceiling = quality * 0.999;
           quality *= 0.85;
           slowFor = fastFor = 0;
@@ -504,7 +512,14 @@ export function StudioCanvas() {
         pose.x += (target.x - pose.x) * rate;
         pose.y += (target.y - pose.y) * rate;
         pose.s += (target.s - pose.s) * rate;
-        if (target.shape !== figure.current && introDone) figure.setShape(target.shape, now);
+        if (target.shape !== figure.current && introDone) {
+          // a change of shape bursts as it goes (not while the form is still fading in)
+          if (figure.current && pose.alpha > 0.5) {
+            burstStart = now;
+            kickPending = true;
+          }
+          figure.setShape(target.shape, now);
+        }
       }
       // leaving a drone-camera scene (the hero hands over under its white halo): drop it at once, no ghost
       if (!target.cam && hadCam) {
@@ -530,14 +545,15 @@ export function StudioCanvas() {
       pose.alpha += (alphaT - pose.alpha) * Math.min(1, dt * 4);
       const figureOn = pose.alpha > 0.004;
 
-      // a settled form breathes out every few seconds
+      // a settled form bursts now and then: a flash (up in 50 ms, gone in ~⅓ s) and one kick for the spray
       const settled = figureOn && !dustT && pose.spread < 0.02 && now - figure.changedAt > 2200;
       if (settled && now >= burstAt) {
         burstStart = now;
-        burstAt = now + 7000 + Math.random() * 2500;
+        kickPending = true;
+        burstAt = now + 6000 + Math.random() * 3500;
       } else if (!settled && now >= burstAt) burstAt = now + 1500;
-      const bt = (now - burstStart) / 1500;
-      const burst = bt >= 0 && bt <= 1 ? Math.pow(Math.sin(Math.PI * bt), 2) : 0;
+      const bt = (now - burstStart) / 1000;
+      const flash = bt < 0 || bt > 2 ? 0 : bt < 0.05 ? bt / 0.05 : Math.exp(-(bt - 0.05) / 0.36);
 
       // quiet page (no motion left, nothing on screen to animate) → rest
       const busy = fluid.energy > 0.02 || figureOn || pose.env > 0.004 || Math.abs(scrollV) > 1;
@@ -570,7 +586,8 @@ export function StudioCanvas() {
             time: clock,
             kMul: 0.18 + 0.82 * smooth(0, 1.4, (now - figure.changedAt) / 1000),
             spread: pose.spread,
-            burst,
+            kick: kickPending ? 1 : 0,
+            flash,
             wave: figure.current === "wave" ? 1 : 0,
             rot: rotation(yaw + sway + mx * 0.25 * act * (1 - pose.dust), tilt * (1 - pose.dust)),
             offset: [pose.x * (1 - pose.dust), pose.y * (1 - pose.dust), 0],
@@ -586,6 +603,7 @@ export function StudioCanvas() {
             fluidToNdc: [2 / fluid.simW, 2 / fluid.simH],
           });
         }
+        kickPending = false; // the spray is one kick
         acc -= STEP;
         steps++;
       }
@@ -597,14 +615,15 @@ export function StudioCanvas() {
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       if (figureOn) {
-        gl.enable(gl.DEPTH_TEST);
+        // no depth test: the beads blend partly additively (see figure.ts), so order doesn't matter and dense
+        // parts glow instead of stacking opaque balls
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        const sizeWorld = (small ? 0.04 : 0.034) * Math.pow(Math.min(1.3, Math.max(0.3, pose.s)), 0.55) * (1 - pose.dust * 0.45) * (1 - pose.spread * 0.5);
+        const sizeWorld = (small ? 0.038 : 0.031) * Math.pow(Math.min(1.3, Math.max(0.3, pose.s)), 0.55) * (1 - pose.dust * 0.45) * (1 - pose.spread * 0.5);
         const keep = 1 - pose.dust * (1 - (small ? 0.07 : 0.035));
         const maxPx = 40 + Math.max(0, 3 - cam.dist) * 45;
-        figure.render(C.vp, C.eye, (sizeWorld * H) / (2 * TAN), pose.alpha * target.fade, keep, pose.tint, maxPx);
-        gl.disable(gl.DEPTH_TEST);
+        const coreR = pose.s * (1 - pose.dust) * (1 - pose.spread * 0.7);
+        figure.render(C.vp, C.eye, (sizeWorld * H) / (2 * TAN), pose.alpha * target.fade, keep, pose.tint, maxPx, clock, [pose.x * (1 - pose.dust), pose.y * (1 - pose.dust), 0, coreR]);
         gl.disable(gl.BLEND);
       }
 

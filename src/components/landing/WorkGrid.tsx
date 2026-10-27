@@ -6,18 +6,23 @@ import { InViewVideo } from "@/components/ui/InViewVideo";
 import { ProjectArt } from "@/components/work/ProjectArt";
 import { PillLink } from "./PillLink";
 
-/** 12-column span + media aspect per position: one wide feature, rows of three, then a tall card on the right
- *  (with the start-a-project tile beside it, or a wide card when there are eight). */
-const LAYOUT: { span: string; aspect: number }[] = [
+/** 12-column span + media aspect per position: one wide feature beside two, then rows of three. An unfinished last
+ *  row is completed by the start-a-project tile (a lone card sits on the right, the tile beside it). */
+const FIRST_ROW: { span: string; aspect: number }[] = [
   { span: "md:col-span-6", aspect: 16 / 11 },
   { span: "md:col-span-3", aspect: 5 / 4 },
   { span: "md:col-span-3", aspect: 1 },
-  { span: "md:col-span-4", aspect: 4 / 5 },
-  { span: "md:col-span-4", aspect: 1 },
-  { span: "md:col-span-4", aspect: 4 / 5 },
-  { span: "md:col-span-4 md:col-start-9", aspect: 4 / 5 },
-  { span: "md:col-span-8 md:col-start-1", aspect: 16 / 10 },
 ];
+const ROW_ASPECTS = [4 / 5, 1, 4 / 5];
+
+function slotFor(i: number, n: number) {
+  if (i < 3) return FIRST_ROW[i]!;
+  const rest = (n - 3) % 3;
+  if (rest === 1 && i === n - 1) return { span: "md:col-span-4 md:col-start-9", aspect: 4 / 5 };
+  return { span: "md:col-span-4", aspect: ROW_ASPECTS[(i - 3) % 3]! };
+}
+/** the tile that completes the last row (none when it is full) */
+const tileSpan = (n: number) => (n <= 3 ? null : ["", "md:col-span-8 md:col-start-1", "md:col-span-4"][(n - 3) % 3] || null);
 
 /** Portrait footage never goes into a landscape slot (and vice versa) — the slot follows the media. */
 function aspectFor(p: Project, slot: number) {
@@ -39,7 +44,7 @@ export function WorkGrid() {
       <h2 className="sr-only">Selected work</h2>
       <ul className="grid grid-cols-1 gap-x-6 gap-y-12 md:grid-flow-row-dense md:grid-cols-12 md:gap-y-14">
         {projects.map((p, i) => {
-          const l = LAYOUT[i % LAYOUT.length]!;
+          const l = slotFor(i, projects.length);
           const clip = !p.previewVideo && p.clip ? getClip(p.clip) : null;
           return (
             <li key={p.slug} className={l.span}>
@@ -80,8 +85,8 @@ export function WorkGrid() {
             </li>
           );
         })}
-        {projects.length % 3 === 1 && (
-          <li className="md:col-span-8 md:col-start-1">
+        {tileSpan(projects.length) && (
+          <li className={tileSpan(projects.length)!}>
             <div className="flex h-full min-h-[280px] flex-col justify-between gap-10 rounded-[var(--radius-card)] bg-lilac p-6 md:p-8">
               <p className="label-mono text-fg-2">Next up</p>
               <div>

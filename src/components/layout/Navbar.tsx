@@ -11,11 +11,15 @@ import { ServicesDropdown } from "./ServicesDropdown";
 /**
  * Editorial header — logo on the left, compact mono navigation on the right, a black pill CTA and a dot-grid
  * button that opens the full menu sheet (on every screen size). Fixed; once the page scrolls, the navigation
- * group sits on a soft paper surface so it stays readable over media.
+ * group sits on a glass surface so it stays readable over media. Phones: on the home page the logo and menu button
+ * stay clear through the hero's sections and the glass bar comes in only once you are inside the studio (the hero
+ * has scrolled away); laptops keep the glass pill from the first scroll.
  */
 export function Navbar() {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled, setScrolled] = useState(false); // the page has moved (laptops: glass pill)
+  const [solid, setSolid] = useState(false); // phones: glass bar — past the home hero, or scrolled elsewhere
+  const [wide, setWide] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [prevPath, setPrevPath] = useState(pathname);
@@ -30,20 +34,27 @@ export function Navbar() {
 
   useEffect(() => {
     let raf = 0;
+    const hero = document.querySelector<HTMLElement>(".hero-track");
+    const mq = window.matchMedia("(min-width: 48rem)");
     const read = () => {
       raf = 0;
-      setScrolled(window.scrollY > 24);
+      const moved = window.scrollY > 24;
+      setScrolled(moved);
+      setSolid(hero ? hero.getBoundingClientRect().bottom <= 2 : moved);
+      setWide(mq.matches);
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(read);
     };
     raf = requestAnimationFrame(read);
     window.addEventListener("scroll", onScroll, { passive: true });
+    mq.addEventListener("change", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      mq.removeEventListener("change", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [pathname]);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -52,11 +63,12 @@ export function Navbar() {
 
   return (
     <>
-      <header data-site-nav data-scrolled={scrolled} className="group/header pointer-events-none fixed inset-x-0 top-0 z-50">
-        {/* phones: a white bar once the page moves, so the logo never sits on top of content */}
+      <header data-site-nav data-scrolled={scrolled} data-solid={solid} className="group/header pointer-events-none fixed inset-x-0 top-0 z-50">
+        {/* phones: a glass bar once you are past the home hero (elsewhere: once the page moves), so the logo never
+            sits on top of content */}
         <span
           aria-hidden="true"
-          className="glass-clear absolute inset-x-0 top-0 h-full opacity-0 transition-opacity duration-300 group-data-[scrolled=true]/header:opacity-100 md:hidden"
+          className="glass-clear absolute inset-x-0 top-0 h-full opacity-0 transition-opacity duration-300 group-data-[solid=true]/header:opacity-100 md:hidden"
         />
         <div className="shell relative flex items-center justify-between pb-2 pt-[calc(env(safe-area-inset-top,0px)+10px)] md:pb-0 md:pt-[calc(env(safe-area-inset-top,0px)+12px)]">
           <BrandLogo variant="inline" tone="dark" height={42} eager className="pointer-events-auto" labelClassName="max-sm:hidden" />
@@ -64,6 +76,7 @@ export function Navbar() {
           <nav
             aria-label="Primary"
             data-scrolled={scrolled}
+            data-glass={wide ? scrolled : solid}
             className="nav-group pointer-events-auto flex items-center gap-1 rounded-[10px] p-1 transition-[background-color,box-shadow] duration-300"
           >
             <ul className="nav-links hidden items-center lg:flex">

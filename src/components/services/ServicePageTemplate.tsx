@@ -11,6 +11,8 @@ import { PageHero } from "@/components/ui/PageHero";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { ProjectCard } from "@/components/work/ProjectCard";
+import { FilmWall } from "@/components/work/FilmWall";
+import { saasFilms } from "@/data/saas-films";
 import { Faq } from "./Faq";
 import { ServiceVisual } from "./ServiceVisual";
 
@@ -122,7 +124,18 @@ export function ServicePageTemplate({ slug }: { slug: ServiceSlug }) {
               </div>
             ))}
           </div>
-          <div className="mt-14 flex justify-center" data-reveal suppressHydrationWarning>
+          {slug === "saas-animation" && (
+            <div className="mt-20 border-t border-line pt-12">
+              <p className="label-mono text-fg-3">More films from the library</p>
+              <FilmWall films={saasFilms.slice(0, 6)} className="mt-8" />
+            </div>
+          )}
+          <div className="mt-14 flex flex-wrap justify-center gap-3" data-reveal suppressHydrationWarning>
+            {slug === "saas-animation" && (
+              <ButtonLink href="/work/saas-animation-films" variant="glass">
+                All {saasFilms.length} SaaS films
+              </ButtonLink>
+            )}
             <ButtonLink href={`/work?category=${service.projectCategory}`} variant="glass">
               All {service.label} work
             </ButtonLink>

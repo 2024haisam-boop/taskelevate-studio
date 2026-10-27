@@ -93,6 +93,8 @@ void main() { o = texture(uSource, vUv) * uValue; }`;
 export interface FluidOptions {
   simShort: number; // velocity grid resolution on the short side
   dyeShort: number;
+  /** pressure solver passes (18 by default; fewer on weak devices) */
+  iterations?: number;
 }
 
 export class Fluid {
@@ -216,7 +218,7 @@ export class Fluid {
       gl.uniform1f(u.scale.uValue, 0.8);
     }, u.scale.uTexel);
     this.pressure.swap();
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < (this.opts.iterations ?? 18); i++) {
       this.pass(p.pressure, this.pressure.write, vt, () => {
         this.bind(0, this.pressure.read.tex, u.pressure.uPressure);
         this.bind(1, this.divergence.tex, u.pressure.uDivergence);

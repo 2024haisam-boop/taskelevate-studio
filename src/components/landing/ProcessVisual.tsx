@@ -5,6 +5,7 @@ import { getClip } from "@/data/media";
 import { cn } from "@/lib/utils/cn";
 import { InViewVideo } from "@/components/ui/InViewVideo";
 import { TUBE, knot, norm, onTube, rng, type V3 } from "@/lib/gl/geometry";
+import { deviceTier } from "@/lib/device";
 
 /* Live process render for the pinned "Our approach" section. One particle field, four states, scrubbed by the
    section's scroll progress (0 → 1):
@@ -218,176 +219,195 @@ export function ProcessVisual({ progress, step, steps }: { progress: RefObject<n
     const box = boxRef.current;
     const canvas = canvasRef.current;
     if (!box || !canvas) return;
-    const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "high-performance" });
-    if (!gl) {
-      setFailed(true);
-      return;
-    }
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    const shader = (type: number, src: string) => {
-      const sh = gl.createShader(type)!;
-      gl.shaderSource(sh, src);
-      gl.compileShader(sh);
-      return sh;
-    };
-    const prog = gl.createProgram()!;
-    gl.attachShader(prog, shader(gl.VERTEX_SHADER, VERT));
-    gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FRAG));
-    gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-      setFailed(true);
-      return;
-    }
-    gl.useProgram(prog);
-
-    const count = box.clientWidth >= 640 ? 14000 : 7500;
-    const data = build(count);
-    const buffers: WebGLBuffer[] = [];
-    (Object.keys(data) as (keyof typeof data)[]).forEach((name) => {
-      const loc = gl.getAttribLocation(prog, name);
-      if (loc < 0) return;
-      const buf = gl.createBuffer()!;
-      buffers.push(buf);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-      gl.bufferData(gl.ARRAY_BUFFER, data[name], gl.STATIC_DRAW);
-      gl.enableVertexAttribArray(loc);
-      gl.vertexAttribPointer(loc, name === "aSeed" ? 4 : 3, gl.FLOAT, false, 0, 0);
-    });
-    const U = (name: string) => gl.getUniformLocation(prog, name);
-    const u = {
-      proj: U("uProj"), rot: U("uRot"), field: U("uField"), mouse: U("uMouse"), time: U("uTime"), morph: U("uMorph"),
-      knot: U("uKnot"), fit: U("uFit"), hover: U("uHover"), aspect: U("uAspect"), dpr: U("uDpr"), size: U("uSize"), scan: U("uScan"),
-    };
-    gl.disable(gl.DEPTH_TEST);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE);
-    gl.clearColor(0.031, 0.031, 0.051, 1);
-
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, box.clientWidth < 640 ? 1.75 : 2);
-      const w = Math.max(1, box.clientWidth), h = Math.max(1, box.clientHeight);
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      const aspect = w / h;
-      const hh = 4.2 * Math.tan((35 * Math.PI) / 360); // half the visible height at the object's depth
-      const hw = hh * aspect;
-      gl.uniformMatrix4fv(u.proj, false, perspective((35 * Math.PI) / 180, aspect, 0.1, 20));
-      gl.uniform2f(u.field, hw * 1.04, hh * 1.04);
-      gl.uniform1f(u.knot, Math.min(1.05, (hh * 0.78) / 1.28, (hw * 0.86) / 1.28));
-      gl.uniform1f(u.fit, Math.min(1, (hw * 2 * 0.88) / FRAMES_W, (hh * 2 * 0.62) / 1.1));
-      gl.uniform1f(u.aspect, aspect);
-      gl.uniform1f(u.dpr, dpr);
-      gl.uniform1f(u.size, w < 640 ? 2.0 : 2.3);
-      dirty = true;
-    };
-
-    // pointer: target + eased values; touch only while dragging
-    const mouse = { x: 0, y: 0, tx: 0, ty: 0, hover: 0, th: 0 };
-    const onMove = (e: PointerEvent) => {
-      const r = box.getBoundingClientRect();
-      mouse.tx = ((e.clientX - r.left) / r.width) * 2 - 1;
-      mouse.ty = -(((e.clientY - r.top) / r.height) * 2 - 1);
-      mouse.th = 1;
-    };
-    const onLeave = () => (mouse.th = 0);
-    const onUp = (e: PointerEvent) => e.pointerType !== "mouse" && onLeave();
-    box.addEventListener("pointermove", onMove);
-    box.addEventListener("pointerdown", onMove);
-    box.addEventListener("pointerleave", onLeave);
-    box.addEventListener("pointerup", onUp);
-
-    let raf = 0;
-    let running = false;
-    let dirty = true;
-    let morph = morphFor(progress.current ?? 0);
-    let last = performance.now();
-    let clock = 0;
-    let lastP = -1;
-
-    const frame = (now: number) => {
-      raf = running ? requestAnimationFrame(frame) : 0;
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      const p = progress.current ?? 0;
-      const target = morphFor(p);
-      if (reduce) {
-        morph = Math.round(target);
-        mouse.hover = 0;
-      } else {
-        clock += dt;
-        morph += (target - morph) * Math.min(1, dt * 5);
-        mouse.x += (mouse.tx - mouse.x) * Math.min(1, dt * 6);
-        mouse.y += (mouse.ty - mouse.y) * Math.min(1, dt * 6);
-        mouse.hover += (mouse.th - mouse.hover) * Math.min(1, dt * 4);
-      }
-      if (reduce && !dirty && p === lastP) return;
-      lastP = p;
-      dirty = false;
-
-      const yaw = Math.sin(clock * 0.25) * 0.28 + mouse.x * 0.35 * mouse.hover + (p - 0.5) * 0.9;
-      const tilt = -0.22 + mouse.y * 0.25 * mouse.hover;
-      const spin = clock * 0.12 + p * 2.6;
-      gl.uniformMatrix3fv(u.rot, false, rotation(yaw, tilt, spin));
-      gl.uniform1f(u.time, clock);
-      gl.uniform1f(u.morph, morph);
-      gl.uniform1f(u.scan, Math.min(1, Math.max(0, (p - 0.53) / 0.2)));
-      gl.uniform2f(u.mouse, mouse.x, mouse.y);
-      gl.uniform1f(u.hover, mouse.hover);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.drawArrays(gl.POINTS, 0, count);
-
-      // HUD readouts (no React render per frame)
-      const k = Math.min(steps - 1, Math.floor(p * steps));
-      const local = Math.min(1, Math.max(0, p * steps - k));
-      if (tcRef.current) tcRef.current.textContent = timecode(p);
-      if (pctRef.current) pctRef.current.textContent = `${HUD[k]!.mode} ${String(Math.round(local * 100)).padStart(3, " ")}%`;
-      if (headRef.current) headRef.current.style.transform = `scaleX(${p.toFixed(4)})`;
-    };
-
-    const start = () => {
-      if (running) return;
-      running = true;
-      last = performance.now();
-      raf = requestAnimationFrame(frame);
-    };
-    const stop = () => {
-      running = false;
-      cancelAnimationFrame(raf);
-      raf = 0;
-    };
-    let inView = false;
-    const sync = () => (inView && document.visibilityState === "visible" ? start() : stop());
-    const io = new IntersectionObserver(([e]) => {
-      inView = Boolean(e?.isIntersecting);
-      sync();
-    });
-    io.observe(box);
-    const ro = new ResizeObserver(resize);
-    ro.observe(box);
-    document.addEventListener("visibilitychange", sync);
-    const onLost = (e: Event) => {
-      e.preventDefault();
-      stop();
-      setFailed(true);
-    };
-    canvas.addEventListener("webglcontextlost", onLost);
-    resize();
-
+    // set up only once the section is about a screen away: nothing to compile or build while the page loads
+    let dispose: (() => void) | undefined;
+    const near = new IntersectionObserver(
+      ([e]) => {
+        if (!e?.isIntersecting || dispose) return;
+        near.disconnect();
+        dispose = setup(box, canvas) ?? (() => undefined);
+      },
+      { rootMargin: "100% 0px" },
+    );
+    near.observe(box);
     return () => {
-      stop();
-      io.disconnect();
-      ro.disconnect();
-      document.removeEventListener("visibilitychange", sync);
-      box.removeEventListener("pointermove", onMove);
-      box.removeEventListener("pointerdown", onMove);
-      box.removeEventListener("pointerleave", onLeave);
-      box.removeEventListener("pointerup", onUp);
-      canvas.removeEventListener("webglcontextlost", onLost);
-      buffers.forEach((b) => gl.deleteBuffer(b));
-      gl.deleteProgram(prog);
+      near.disconnect();
+      dispose?.();
     };
+
+    function setup(box: HTMLDivElement, canvas: HTMLCanvasElement): (() => void) | undefined {
+      const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "high-performance" });
+      if (!gl) {
+        setFailed(true);
+        return;
+      }
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const shader = (type: number, src: string) => {
+        const sh = gl.createShader(type)!;
+        gl.shaderSource(sh, src);
+        gl.compileShader(sh);
+        return sh;
+      };
+      const prog = gl.createProgram()!;
+      gl.attachShader(prog, shader(gl.VERTEX_SHADER, VERT));
+      gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FRAG));
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        setFailed(true);
+        return;
+      }
+      gl.useProgram(prog);
+
+      const count = box.clientWidth >= 640 ? 14000 : 7500;
+      const data = build(count);
+      const buffers: WebGLBuffer[] = [];
+      (Object.keys(data) as (keyof typeof data)[]).forEach((name) => {
+        const loc = gl.getAttribLocation(prog, name);
+        if (loc < 0) return;
+        const buf = gl.createBuffer()!;
+        buffers.push(buf);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, data[name], gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, name === "aSeed" ? 4 : 3, gl.FLOAT, false, 0, 0);
+      });
+      const U = (name: string) => gl.getUniformLocation(prog, name);
+      const u = {
+        proj: U("uProj"), rot: U("uRot"), field: U("uField"), mouse: U("uMouse"), time: U("uTime"), morph: U("uMorph"),
+        knot: U("uKnot"), fit: U("uFit"), hover: U("uHover"), aspect: U("uAspect"), dpr: U("uDpr"), size: U("uSize"), scan: U("uScan"),
+      };
+      gl.disable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      gl.clearColor(0.031, 0.031, 0.051, 1);
+
+      const resize = () => {
+        // weak devices draw fewer pixels (point sizes follow, so it looks the same, a little softer)
+        const dpr = Math.min(window.devicePixelRatio || 1, deviceTier() === "low" ? (box.clientWidth < 640 ? 1.25 : 1.5) : box.clientWidth < 640 ? 1.75 : 2);
+        const w = Math.max(1, box.clientWidth), h = Math.max(1, box.clientHeight);
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        const aspect = w / h;
+        const hh = 4.2 * Math.tan((35 * Math.PI) / 360); // half the visible height at the object's depth
+        const hw = hh * aspect;
+        gl.uniformMatrix4fv(u.proj, false, perspective((35 * Math.PI) / 180, aspect, 0.1, 20));
+        gl.uniform2f(u.field, hw * 1.04, hh * 1.04);
+        gl.uniform1f(u.knot, Math.min(1.05, (hh * 0.78) / 1.28, (hw * 0.86) / 1.28));
+        gl.uniform1f(u.fit, Math.min(1, (hw * 2 * 0.88) / FRAMES_W, (hh * 2 * 0.62) / 1.1));
+        gl.uniform1f(u.aspect, aspect);
+        gl.uniform1f(u.dpr, dpr);
+        gl.uniform1f(u.size, w < 640 ? 2.0 : 2.3);
+        dirty = true;
+      };
+
+      // pointer: target + eased values; touch only while dragging
+      const mouse = { x: 0, y: 0, tx: 0, ty: 0, hover: 0, th: 0 };
+      const onMove = (e: PointerEvent) => {
+        const r = box.getBoundingClientRect();
+        mouse.tx = ((e.clientX - r.left) / r.width) * 2 - 1;
+        mouse.ty = -(((e.clientY - r.top) / r.height) * 2 - 1);
+        mouse.th = 1;
+      };
+      const onLeave = () => (mouse.th = 0);
+      const onUp = (e: PointerEvent) => e.pointerType !== "mouse" && onLeave();
+      box.addEventListener("pointermove", onMove);
+      box.addEventListener("pointerdown", onMove);
+      box.addEventListener("pointerleave", onLeave);
+      box.addEventListener("pointerup", onUp);
+
+      let raf = 0;
+      let running = false;
+      let dirty = true;
+      let morph = morphFor(progress.current ?? 0);
+      let last = performance.now();
+      let clock = 0;
+      let lastP = -1;
+
+      const frame = (now: number) => {
+        raf = running ? requestAnimationFrame(frame) : 0;
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        const p = progress.current ?? 0;
+        const target = morphFor(p);
+        if (reduce) {
+          morph = Math.round(target);
+          mouse.hover = 0;
+        } else {
+          clock += dt;
+          morph += (target - morph) * Math.min(1, dt * 5);
+          mouse.x += (mouse.tx - mouse.x) * Math.min(1, dt * 6);
+          mouse.y += (mouse.ty - mouse.y) * Math.min(1, dt * 6);
+          mouse.hover += (mouse.th - mouse.hover) * Math.min(1, dt * 4);
+        }
+        if (reduce && !dirty && p === lastP) return;
+        lastP = p;
+        dirty = false;
+
+        const yaw = Math.sin(clock * 0.25) * 0.28 + mouse.x * 0.35 * mouse.hover + (p - 0.5) * 0.9;
+        const tilt = -0.22 + mouse.y * 0.25 * mouse.hover;
+        const spin = clock * 0.12 + p * 2.6;
+        gl.uniformMatrix3fv(u.rot, false, rotation(yaw, tilt, spin));
+        gl.uniform1f(u.time, clock);
+        gl.uniform1f(u.morph, morph);
+        gl.uniform1f(u.scan, Math.min(1, Math.max(0, (p - 0.53) / 0.2)));
+        gl.uniform2f(u.mouse, mouse.x, mouse.y);
+        gl.uniform1f(u.hover, mouse.hover);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, count);
+
+        // HUD readouts (no React render per frame)
+        const k = Math.min(steps - 1, Math.floor(p * steps));
+        const local = Math.min(1, Math.max(0, p * steps - k));
+        if (tcRef.current) tcRef.current.textContent = timecode(p);
+        if (pctRef.current) pctRef.current.textContent = `${HUD[k]!.mode} ${String(Math.round(local * 100)).padStart(3, " ")}%`;
+        if (headRef.current) headRef.current.style.transform = `scaleX(${p.toFixed(4)})`;
+      };
+
+      const start = () => {
+        if (running) return;
+        running = true;
+        last = performance.now();
+        raf = requestAnimationFrame(frame);
+      };
+      const stop = () => {
+        running = false;
+        cancelAnimationFrame(raf);
+        raf = 0;
+      };
+      let inView = false;
+      const sync = () => (inView && document.visibilityState === "visible" ? start() : stop());
+      const io = new IntersectionObserver(([e]) => {
+        inView = Boolean(e?.isIntersecting);
+        sync();
+      });
+      io.observe(box);
+      const ro = new ResizeObserver(resize);
+      ro.observe(box);
+      document.addEventListener("visibilitychange", sync);
+      const onLost = (e: Event) => {
+        e.preventDefault();
+        stop();
+        setFailed(true);
+      };
+      canvas.addEventListener("webglcontextlost", onLost);
+      resize();
+
+      return () => {
+        stop();
+        io.disconnect();
+        ro.disconnect();
+        document.removeEventListener("visibilitychange", sync);
+        box.removeEventListener("pointermove", onMove);
+        box.removeEventListener("pointerdown", onMove);
+        box.removeEventListener("pointerleave", onLeave);
+        box.removeEventListener("pointerup", onUp);
+        canvas.removeEventListener("webglcontextlost", onLost);
+        buffers.forEach((b) => gl.deleteBuffer(b));
+        gl.deleteProgram(prog);
+      };
+    }
   }, [progress, steps]);
 
   const hud = HUD[step]!;

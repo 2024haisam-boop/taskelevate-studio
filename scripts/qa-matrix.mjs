@@ -17,7 +17,17 @@ let failures = 0;
 
 for (const vp of viewports) {
   for (const r of routes) {
-    const out = execFileSync(process.execPath, [join(import.meta.dirname, "qa-screenshot.mjs"), base + r, vp, join(dir, "x.png"), "--reveal", "--metrics", "--wait=2200"], { encoding: "utf8" });
+    // headless Chrome occasionally stalls on start-up (GPU); give each page 45 s and one retry
+    const run = () => execFileSync(process.execPath, [join(import.meta.dirname, "qa-screenshot.mjs"), base + r, vp, join(dir, "x.png"), "--reveal", "--metrics", "--wait=2200"], { encoding: "utf8", timeout: 45000, killSignal: "SIGKILL" });
+    let out;
+    try {
+      out = run();
+    } catch {
+      try {
+        execFileSync("pkill", ["-f", "tes-qa-"]); // the stalled run's browser
+      } catch {}
+      out = run();
+    }
     const json = JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1));
     const bad = json.overflowX > 0 || json.clippedHeadlines.length > 0;
     if (bad) failures++;
