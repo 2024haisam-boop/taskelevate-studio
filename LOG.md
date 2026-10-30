@@ -595,3 +595,11 @@ in your browser". Mounts after first interaction or 1.2 s, renders only in view;
 lower DPR.
 **Bug found + fixed:** `deviceTier()` ran during render on the server (Node 24 has `navigator`, not `window`) → the
 service page fell back to client rendering (React "script tag" warning). Guarded; only effects/client code call it.
+
+### 2026-10-27 — pushed (ebd73f2); beads less white
+Pushed everything above to GitHub `main` as ebd73f2. User then: "the colour of the beads is very bright, whitish — fix
+it". The wash-out came from four things stacking: partly additive blending (alpha × 0.7, overlaps piled up toward white),
+the pink-white core glow (0.38), an 11 % share of white beads, and a strong white sparkle. Now (`figure.ts`): blend
+alpha × 0.9 and colour clamped to 1, core glow → saturated magenta at 0.22, glow flash → magenta at 0.4, sparkle 1.8 →
+1.1, softer shading lift / rim / spec, palette deepened (white 11 % → 3 %). Beads read rich violet / magenta; the logo
+keeps its own blue → violet. Checked by frame capture before/after on the production build.

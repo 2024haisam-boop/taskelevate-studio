@@ -132,9 +132,9 @@ void main() {
   float depth = max(0.2, length(P.xyz - uEye));
   gl_PointSize = clamp(uPx * (0.7 + aColor.w * 0.6) * (1.0 + P.w * 0.22) / depth, 1.0, uMaxPx);
   vColor = mix(aColor.rgb, aTint, uTint);
-  // lit from within: beads near the centre of the form glow toward pink-white
+  // lit from within: beads near the centre of the form warm toward magenta (kept saturated, never white)
   float core = exp(-pow(length(P.xyz - uCore.xyz) / max(uCore.w, 1e-3), 2.0) * 2.2);
-  vColor = mix(vColor, vec3(1.0, 0.84, 0.97), core * 0.38);
+  vColor = mix(vColor, vec3(0.86, 0.36, 0.92), core * 0.22);
   vGlow = P.w;
 }`;
 
@@ -146,8 +146,8 @@ in float vVis;
 in float vSpark;
 uniform float uAlpha;
 out vec4 outColor;
-// a small glossy bead with a soft edge; drawn partly additive, so where the form is dense it glows toward pink-white
-// (the luminous glitter look) instead of stacking opaque balls
+// a small glossy bead with a soft edge; drawn slightly additive, so dense parts of the form glow a little without
+// washing out to white
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(c, c);
@@ -158,22 +158,22 @@ void main() {
   float diff = max(dot(n, L), 0.0);
   float spec = pow(max(dot(n, normalize(L + vec3(0.0, 0.0, 1.0))), 0.0), 40.0);
   float rim = pow(1.0 - n.z, 2.0);
-  vec3 col = vColor * (0.6 + 0.55 * diff) + vec3(0.6, 0.55, 1.0) * rim * 0.28 + vec3(spec * 0.65);
-  // glow → a pink-white flash that keeps the shading (lifted, not flattened)
-  col = mix(col, vec3(1.0, 0.86, 0.98), vGlow * 0.55) + vec3(0.3, 0.16, 0.26) * vGlow * (0.5 + 0.5 * diff);
-  col += vec3(1.0, 0.96, 1.0) * vSpark * (1.0 - r) * 1.8;
+  vec3 col = vColor * (0.5 + 0.5 * diff) + vec3(0.5, 0.4, 1.0) * rim * 0.18 + vec3(spec * 0.45);
+  // glow → a bright magenta flash that keeps the shading (lifted, not flattened)
+  col = mix(col, vec3(0.95, 0.55, 0.98), vGlow * 0.4) + vec3(0.18, 0.06, 0.16) * vGlow * (0.5 + 0.5 * diff);
+  col += vec3(1.0, 0.92, 1.0) * vSpark * (1.0 - r) * 1.1;
   float a = (1.0 - smoothstep(0.42, 1.0, r)) * uAlpha * vVis;
-  outColor = vec4(col * a, a * 0.7);
+  outColor = vec4(min(col, vec3(1.0)) * a, a * 0.9);
 }`;
 
 const PALETTE: [number, number, number, number][] = [
-  // r, g, b, weight — violet, magenta and pink-lilac glitter, a touch of brand blue, a little white
-  [0.55, 0.3, 0.93, 0.3],
-  [0.71, 0.3, 0.9, 0.22],
-  [0.84, 0.58, 0.98, 0.2],
-  [0.42, 0.2, 0.86, 0.1],
-  [0.2, 0.55, 0.95, 0.07],
-  [0.97, 0.93, 1.0, 0.11],
+  // r, g, b, weight — deep violet, magenta and lilac glitter, a touch of brand blue, a rare white
+  [0.5, 0.24, 0.9, 0.32],
+  [0.68, 0.22, 0.86, 0.25],
+  [0.74, 0.44, 0.94, 0.16],
+  [0.36, 0.16, 0.8, 0.14],
+  [0.2, 0.5, 0.94, 0.08],
+  [0.95, 0.9, 1.0, 0.03],
 ];
 
 // ---------------------------------------------------------------- shapes, ~unit radius, centred
