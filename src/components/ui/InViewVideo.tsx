@@ -15,9 +15,26 @@ interface Props {
 /**
  * Muted looping video that loads only when it approaches the viewport and plays only while visible.
  * Reduced motion → stays on its poster. Never more than what's on screen is decoding.
+ * The poster isn't in the markup either (a `poster` attribute downloads at once, wherever the card is): it is set
+ * once the card is within a couple of screens, so on a slow connection the first bytes go to what's on screen.
  */
 export function InViewVideo({ src, poster, className, hoverOnly = false, rootMargin = "200px" }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const v = ref.current;
+    if (!v || !poster) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e?.isIntersecting) return;
+        v.poster = poster;
+        io.disconnect();
+      },
+      { rootMargin: "200% 0px" },
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, [poster]);
 
   useEffect(() => {
     const v = ref.current;
@@ -67,7 +84,6 @@ export function InViewVideo({ src, poster, className, hoverOnly = false, rootMar
   return (
     <video
       ref={ref}
-      poster={poster}
       muted
       loop
       playsInline

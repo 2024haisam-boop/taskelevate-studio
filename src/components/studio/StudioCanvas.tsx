@@ -6,6 +6,7 @@ import { FULLSCREEN_VERT, floatFormats, locations, program, smooth } from "@/lib
 import { Figure, SHAPES, sampleMark, type ShapeName } from "@/lib/gl/figure";
 import { Fluid } from "@/lib/gl/fluid";
 import { deviceTier, demoteTier, weakGpu } from "@/lib/device";
+import logoDark from "../../../public/brand/taskelevate-logo-dark.png";
 
 /* THE STUDIO LAYER — one WebGL2 canvas under the whole page (sticky inside the page sheet, so it never covers the
    footer curtain). It runs:
@@ -25,7 +26,8 @@ import { deviceTier, demoteTier, weakGpu } from "@/lib/device";
 const FOV = (35 * Math.PI) / 180;
 const TAN = Math.tan(FOV / 2);
 const DIST = 6;
-const LOGO_SRC = "/brand/taskelevate-logo-dark.png";
+// the very file the intro shows first (same URL → from the browser cache, not a second 60 KB download)
+const LOGO_SRC = logoDark.src;
 const INK = [
   [0.53, 0.33, 0.91],
   [0.09, 0.61, 0.91],
@@ -319,8 +321,8 @@ export function StudioCanvas() {
     const STEP = 1 / 60;
     let acc = 0;
 
-    // ---- figure render target (RGBA8 + depth), canvas-sized
-    let figTex: WebGLTexture | null = null, figFb: WebGLFramebuffer | null = null, figDepth: WebGLRenderbuffer | null = null;
+    // ---- figure render target (RGBA8, canvas-sized; no depth buffer — the beads blend without a depth test)
+    let figTex: WebGLTexture | null = null, figFb: WebGLFramebuffer | null = null;
     const hh = DIST * TAN; // half view height at the figure's depth, resting camera
     let W = 1, H = 1, aspect = 1, hw = hh;
     let quality = 1; // drops when frames run slow (adaptive resolution)
@@ -336,7 +338,6 @@ export function StudioCanvas() {
       fluid.resize(aspect);
       if (figTex) gl.deleteTexture(figTex);
       if (figFb) gl.deleteFramebuffer(figFb);
-      if (figDepth) gl.deleteRenderbuffer(figDepth);
       figTex = gl.createTexture()!;
       gl.bindTexture(gl.TEXTURE_2D, figTex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -344,15 +345,11 @@ export function StudioCanvas() {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      figDepth = gl.createRenderbuffer()!;
-      gl.bindRenderbuffer(gl.RENDERBUFFER, figDepth);
-      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, W, H);
       figFb = gl.createFramebuffer()!;
       gl.bindFramebuffer(gl.FRAMEBUFFER, figFb);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, figTex, 0);
-      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, figDepth);
       gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       wake();
     };
@@ -613,13 +610,13 @@ export function StudioCanvas() {
       gl.bindFramebuffer(gl.FRAMEBUFFER, figFb);
       gl.viewport(0, 0, W, H);
       gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       if (figureOn) {
         // no depth test: the beads blend partly additively (see figure.ts), so order doesn't matter and dense
         // parts glow instead of stacking opaque balls
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        const sizeWorld = (small ? 0.038 : 0.031) * Math.pow(Math.min(1.3, Math.max(0.3, pose.s)), 0.55) * (1 - pose.dust * 0.45) * (1 - pose.spread * 0.5);
+        const sizeWorld = (small ? 0.031 : 0.025) * Math.pow(Math.min(1.3, Math.max(0.3, pose.s)), 0.55) * (1 - pose.dust * 0.45) * (1 - pose.spread * 0.5);
         const keep = 1 - pose.dust * (1 - (small ? 0.07 : 0.035));
         const maxPx = 40 + Math.max(0, 3 - cam.dist) * 45;
         const coreR = pose.s * (1 - pose.dust) * (1 - pose.spread * 0.7);
@@ -694,7 +691,6 @@ export function StudioCanvas() {
       figure.dispose();
       if (figTex) gl.deleteTexture(figTex);
       if (figFb) gl.deleteFramebuffer(figFb);
-      if (figDepth) gl.deleteRenderbuffer(figDepth);
       gl.deleteProgram(comp);
       rescanRef.current = () => undefined;
     };

@@ -419,9 +419,10 @@ function Choice({
           "inline-flex items-center rounded-full border px-4 font-medium transition-[background-color,border-color,color,box-shadow] duration-200",
           size === "md" ? "min-h-12 text-[0.95rem]" : "min-h-11 text-[0.875rem]",
           invalid ? "border-red-400/50" : "border-black/12",
-          "text-fg-2 hover:border-black/25 hover:text-fg",
+          // hover only lifts unselected chips (it used to turn a selected chip's text dark on its dark fill)
+          "text-fg-2 peer-not-checked:hover:border-black/25 peer-not-checked:hover:text-fg",
           "peer-checked:border-transparent peer-checked:bg-fg peer-checked:text-bg",
-          "peer-focus-visible:shadow-[0_0_0_3px_#08090d,0_0_0_5px_#a855f7]",
+          "peer-focus-visible:shadow-[0_0_0_3px_var(--color-bg),0_0_0_5px_#a855f7]",
         )}
       >
         {children}

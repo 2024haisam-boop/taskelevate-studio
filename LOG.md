@@ -603,3 +603,28 @@ the pink-white core glow (0.38), an 11 % share of white beads, and a strong whit
 alpha × 0.9 and colour clamped to 1, core glow → saturated magenta at 0.22, glow flash → magenta at 0.4, sparkle 1.8 →
 1.1, softer shading lift / rim / spec, palette deepened (white 11 % → 3 %). Beads read rich violet / magenta; the logo
 keeps its own blue → violet. Checked by frame capture before/after on the production build.
+
+### 2026-10-30 — beads lighter + faster first load (pushed colour fix as 8fdc3ad first)
+User: "make the beads lighter to load fast on all devices and slow internet — don't reduce the animation or quality,
+reduce bead size". Measured first (scratchpad `loadcost.mjs`: phone, slow 3G 400 kb/s + 400 ms, CPU 4×;
+`cpuprof.mjs`): the bead code is one ~25 KB chunk and its frame loop is ~1 ms/frame at 4× CPU — not the problem. The
+problems were bandwidth fights and GPU waste:
+- **Posters downloaded at once** (`<video poster>` fetches immediately, wherever the card is): ~450 KB of film posters
+  far below the hero competed with the beads' code on slow links. `InViewVideo` now sets the poster when the card is
+  within ~2 screens (IntersectionObserver `200% 0px`). Applies to WorkGrid, ServiceCards, StudioNotes, ProcessVisual,
+  FilmWall, ProjectCard.
+- **Logo downloaded twice**: the beads sampled `/brand/taskelevate-logo-dark.png` while the intro shows the hashed
+  static import of the same file → StudioCanvas now imports it too (same URL, from cache; −60 KB).
+- **Unused depth buffer** on the bead render target (depth test was already off): removed — saves 2–8 MB of GPU memory
+  and a full-screen depth clear every frame.
+- **Smaller beads**: world size 0.031 → 0.025 (phones 0.038 → 0.031): finer glitter, ~35 % less fill per frame, same
+  count / motion / burst.
+Slow 3G home: images in the first 20 s 601 → 77 KB, total 944 → 619 KB, bead code arrives 14.1 → 7.6 s, load event
+never-within-20 s → 9.3 s. Lazy posters checked on /work/saas-animation-films (5 of 29 at first, all near ones set,
+all after scrolling).
+
+### 2026-10-30 — contact chips: selected text vanished on hover
+User screenshot: hovering a selected budget/timeline chip hid its label. `hover:text-fg` (dark) beat
+`peer-checked:text-bg` (light) on the dark fill. `Choice` in `ProjectInquiryForm.tsx` now hovers only unselected chips
+(`peer-not-checked:hover:*`); the focus ring's gap uses `var(--color-bg)` instead of the old dark-theme #08090d.
+Checked with real mouse clicks + hover in headless Chrome (selected + hovered → light text on dark fill).
